@@ -6,7 +6,7 @@ from datetime import datetime
 import json
 
 # Import your existing ModbusRTUClient
-from ..mod import ModbusRTUClient, auto_detect_modbus_port
+from mod import ModbusRTUClient, auto_detect_modbus_port
 
 load_dotenv()
 
