@@ -41,36 +41,37 @@ except Exception as e:
 # Ensure outputs is always a list of booleans with 8 elements
 outputs = [bool(outputs[i]) if i < len(outputs) else False for i in range(8)]
 CONNECTION = 'connected' if connected and not error_msg else 'disconnected'
+
+# Generate configuration values
+base_url = API_BASE_URL
+modbus_api = MODBUS_API
+connection_status = CONNECTION
+refresh_interval = int(REFRESH) if str(REFRESH).isdigit() else 3000
+current_time = now
+error_message = error_msg or ""
+
+# Generate endpoints
+status_endpoint = f"{MODBUS_API}/status"
+toggle_endpoint = f"{MODBUS_API}/toggle"
 ?>
 
     <!-- Application Configuration -->
     <script type="application/json" id="app-config">
-    <?py
-    # Generate safe configuration dictionary
-    config = {
+    {
         "api": {
-            "baseUrl": API_BASE_URL,
-            "modbusApi": MODBUS_API,
-            "status": CONNECTION,
-            "endpoints": {
-                "status": f"{MODBUS_API}/status",
-                "toggle": f"{MODBUS_API}/toggle"
-            }
+            "baseUrl": "{{MODBUS_API}}",
+            "status": "{{CONNECTION}}"
         },
         "ui": {
-            "refreshInterval": int(REFRESH) if str(REFRESH).isdigit() else 3000,
-            "lastUpdated": now,
-            "error": error_msg or "",
-            "outputs": outputs
+            "refreshInterval": "{{REFRESH}}",
+            "lastUpdated": "{{now}}",
+            "error": "{{error_msg}}"
         },
-        "version": "1.0.0"
+        "version": "1.0.0",
+        "lastUpdated": "{{now}}"
     }
-    
-    # Output as JSON with proper escaping
-    print(json.dumps(config, ensure_ascii=False, default=str))
-    ?>
+
     </script>
-    
     <!-- Initialize JavaScript -->
     <script>
     // Parse the configuration
