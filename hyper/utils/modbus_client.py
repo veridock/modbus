@@ -84,6 +84,19 @@ class ModbusClient:
     def write_coil(self, channel: int, value: bool) -> bool:
         """Write coil state"""
         result = self.execute_command(['wc', str(channel), '1' if value else '0'])
+        
+        # Sprawdzenie czy wynik zawiera JSON
+        if result['success'] and result['output']:
+            try:
+                import json
+                json_output = json.loads(result['output'])
+                if isinstance(json_output, dict) and 'success' in json_output:
+                    return json_output['success']
+            except json.JSONDecodeError:
+                pass  # Nie JSON, używamy standardowego result['success']
+            except Exception as e:
+                logger.error(f"Error parsing JSON output: {e}")
+        
         return result['success']
     
     def read_register(self, register: int) -> Optional[int]:
