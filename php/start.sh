@@ -2,11 +2,17 @@
 # Start script for Modbus RTU IO 8CH Control System
 # Starts both FastAPI backend and PHP development server
 
+# Get the directory where this script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PYTHON_SCRIPT="$SCRIPT_DIR/api.py"
-PID_FILE="$SCRIPT_DIR/modbus.pid"
+# Get the root directory of the project (one level up from php directory)
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+# Set the path to the Python script
+PYTHON_SCRIPT="$PROJECT_ROOT/api.py"
+echo "Looking for API script at: $PYTHON_SCRIPT"
+# Set up file paths
+PID_FILE="$PROJECT_ROOT/modbus.pid"
 PHP_PID_FILE="$SCRIPT_DIR/php.pid"
-LOG_FILE="$SCRIPT_DIR/modbus.log"
+LOG_FILE="$PROJECT_ROOT/modbus.log"
 PHP_LOG_FILE="$SCRIPT_DIR/php.log"
 
 # Source environment variables
@@ -51,18 +57,26 @@ check_running_services() {
 
 # Check if Python script exists and virtual environment is set up
 check_prerequisites() {
+    # Ensure we're using the full path to the API script
+    PYTHON_SCRIPT="$(realpath "$PYTHON_SCRIPT" 2>/dev/null || echo "$PYTHON_SCRIPT")"
+    
+    echo "Debug: Checking if file exists: $PYTHON_SCRIPT"
     if [[ ! -f "$PYTHON_SCRIPT" ]]; then
-        echo "❌ Error: api.py not found in $SCRIPT_DIR"
+        echo "⚠️ Error: File not found: $PYTHON_SCRIPT"
+        echo "Current directory: $(pwd)"
+        echo "Directory contents of $(dirname "$PYTHON_SCRIPT"):"
+        ls -la "$(dirname "$PYTHON_SCRIPT")" 2>/dev/null || echo "Could not list directory"
         exit 1
     fi
+    echo "Found API script at: $PYTHON_SCRIPT"
     
     if [[ ! -d "$SCRIPT_DIR/venv" ]]; then
-        echo "❌ Error: Virtual environment not found. Run ./install.sh first."
+        echo "⚠️ Virtual environment not found. Run ./install.sh first."
         exit 1
     fi
     
     if [[ ! -f "$SCRIPT_DIR/modbus.php.svg" ]]; then
-        echo "❌ Error: modbus.php.svg not found in $SCRIPT_DIR"
+        echo "⚠️ modbus.php.svg not found in $SCRIPT_DIR"
         exit 1
     fi
 }
@@ -177,11 +191,23 @@ open_browser() {
     echo "   Browser opened: $WEB_URL"
 }
 
+# Debug function to print variable values
+debug_var() {
+    local var_name=$1
+    local var_value=${!var_name}
+    echo "DEBUG: $var_name = '$var_value'"
+}
+
 # Main execution
 main() {
     echo "========================================="
     echo "🚀 Starting Modbus RTU IO 8CH Control System"
     echo "========================================="
+    
+    # Debug output for important variables
+    debug_var "SCRIPT_DIR"
+    debug_var "PROJECT_ROOT"
+    debug_var "PYTHON_SCRIPT"
     
     check_running_services
     check_prerequisites

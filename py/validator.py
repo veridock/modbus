@@ -93,23 +93,53 @@ def validate_and_clean_content(content, content_type='text/html'):
             return True, json.dumps(parsed, ensure_ascii=False), ""
             
         elif content_type == 'image/svg+xml':
-            # Basic XML validation for SVG
+            # First, process PHP-style Python blocks to make them XML-friendly
+            # We'll replace them with placeholders for validation
             from xml.etree import ElementTree
             from io import StringIO
+            import re
             
-            # Try to parse the XML
+            # Create a version of the content with Python blocks replaced by comments
+            python_blocks = []
+            def replace_python_block(match):
+                python_blocks.append(match.group(0))
+                return f"<!-- PYTHON_BLOCK_{len(python_blocks)-1} -->"
+                
+            # Replace PHP-style Python blocks with placeholders
+            content_for_validation = re.sub(
+                r'<\?py[\s\S]*?\?>',
+                replace_python_block,
+                content,
+                flags=re.MULTILINE
+            )
+            
+            # Now validate the XML with placeholders
             try:
-                ElementTree.parse(StringIO(content))
+                # Try to parse the XML with placeholders
+                ElementTree.parse(StringIO(content_for_validation))
+                
+                # If we get here, the XML is valid with placeholders
+                # Restore the original Python blocks
+                for i, block in enumerate(python_blocks):
+                    content = content.replace(f"<!-- PYTHON_BLOCK_{i} -->", block)
+                
                 return True, content, ""
+                
             except Exception as e:
-                # If parsing fails, try to fix common issues
+                # If parsing fails, try to fix common XML issues
                 fixed_content = re.sub(
                     r'&(?!amp;|lt;|gt;|apos;|quot;|#\d+;|#x[0-9a-fA-F]+;)', 
                     '&amp;', 
-                    content
+                    content_for_validation
                 )
+                
                 try:
                     ElementTree.parse(StringIO(fixed_content))
+                    # If we get here, the fixed XML is valid
+                    # Restore the original Python blocks in the fixed content
+                    for i, block in enumerate(python_blocks):
+                        fixed_content = fixed_content.replace(f"<!-- PYTHON_BLOCK_{i} -->", block)
+                    
                     return True, fixed_content, "Fixed invalid XML entities"
                 except Exception as e2:
                     return False, content, f"Invalid SVG/XML: {str(e2)[:200]}"

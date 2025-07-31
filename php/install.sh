@@ -168,30 +168,9 @@ create_shortcuts() {
     
     echo "✅ Scripts made executable"
     
-    # Create simple launcher script
-    cat > "$SCRIPT_DIR/launch.sh" << 'EOF'
-#!/bin/bash
-# Quick launcher for Modbus Control System
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
-
-echo "🚀 Starting Modbus RTU IO 8CH Control System..."
-echo "   FastAPI: http://localhost:8000"
-echo "   Web UI:  http://localhost:8080/modbus.php.svg"
-echo ""
-echo "Press Ctrl+C to stop all services"
-
-# Start the system
-./start.sh
-
-# Wait for user interrupt
-trap 'echo ""; echo "🛑 Stopping services..."; ./stop.sh; exit 0' INT
-while true; do sleep 1; done
-EOF
     
-    chmod +x "$SCRIPT_DIR/launch.sh"
-    echo "✅ Launch script created: ./launch.sh"
+    chmod +x "$SCRIPT_DIR/start.sh"
+    echo "✅ Launch script created: ./start.sh"
 }
 
 # Run installation steps
@@ -239,7 +218,7 @@ main() {
     echo "📋 Next steps:"
     echo "   1. Connect your Modbus RTU IO 8CH device via USB-to-RS485"
     echo "   2. Update .env file with your device settings if needed"
-    echo "   3. Run: ./start.sh  (or ./launch.sh for guided startup)"
+    echo "   3. Run: ./start.sh  (or ./start.sh for guided startup)"
     echo "   4. Open: http://localhost:8080/modbus.php.svg"
     echo ""
     echo "📖 Documentation: README.md"
