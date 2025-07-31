@@ -13,12 +13,13 @@ Usage:
     python mod.py
 """
 
+import json
 import logging
 import sys
 import time
 import os
 import glob
-from typing import Optional, List, Union
+from typing import Optional, List, Union, Dict, Any
 
 try:
     from pymodbus.client.serial import ModbusSerialClient
@@ -178,7 +179,8 @@ class ModbusRTUClient:
                  parity: str = 'N',
                  stopbits: int = 1,
                  bytesize: int = 8,
-                 timeout: Optional[float] = None):
+                 timeout: Optional[float] = None,
+                 verbose: bool = False):
         """
         Initialize Modbus RTU client
         
@@ -189,7 +191,14 @@ class ModbusRTUClient:
             stopbits: Stop bits (default: 1)
             bytesize: Data bits (default: 8)
             timeout: Communication timeout in seconds (default: from .env MODBUS_TIMEOUT or 1.0)
+            verbose: Enable verbose logging (default: False)
         """
+        # Configure logging level based on verbose flag
+        if verbose:
+            logging.basicConfig(level=logging.INFO)
+        else:
+            logging.basicConfig(level=logging.WARNING)  # Only show warnings and errors by default
+            
         # Load configuration from .env file with fallbacks
         self.port = port or os.getenv('MODBUS_PORT', '/dev/ttyUSB0')
         self.baudrate = baudrate or int(os.getenv('MODBUS_BAUDRATE', '9600'))
@@ -202,6 +211,7 @@ class ModbusRTUClient:
         logger.info(f"Initializing Modbus RTU client on {self.port}")
         logger.info(f"Parameters: {self.baudrate} {self.parity} {self.bytesize} {self.stopbits}")
         logger.info(f"Configuration loaded from .env: port={self.port}, baudrate={self.baudrate}, timeout={self.timeout}")
+        self.verbose = verbose
     
     def connect(self) -> bool:
         """
@@ -642,137 +652,354 @@ def interactive_mode():
         modbus.disconnect()
 
 
+def create_response(command: str) -> Dict[str, Any]:
+    """Create a standardized response dictionary"""
+    return {
+        'success': False,
+        'command': command,
+        'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
+        'data': None,
+        'error': None,
+        'operation': command.split()[0] if command else None
+    }
+
+def output_json(data: Dict[str, Any]) -> None:
+    """Output data as JSON with pretty printing"""
+    print(json.dumps(data, indent=2))
+
 def command_line_mode(args):
     """
-    Command-line mode for direct Modbus operations
+    Command-line mode for direct Modbus operations with JSON output
     
     Args:
-        args: Command line arguments (e.g. ['wc', '0', '1'])
+        args: Command line arguments (e.g. ['-v', 'wc', '0', '1'])
     """
-    if len(args) < 2:
-        print("Error: Not enough arguments")
-        print_command_help()
-        return False
-    
-    cmd = args[0].lower()
-    
-    # Auto-detect or use configured port
-    configured_port = os.getenv('MODBUS_PORT', '/dev/ttyUSB0')
-    modbus = ModbusRTUClient(port=configured_port)
-    
-    if not modbus.connect():
-        print(f"Failed to connect to configured port {configured_port}")
-        print("Attempting auto-detection...")
+    # Handle verbose flag
+    verbose = '-v' in args or '--verbose' in args
+    if verbose:
+        args = [arg for arg in args if arg not in ('-v', '--verbose')]
         
-        detected_port = auto_detect_modbus_port()
-        if detected_port:
-            modbus = ModbusRTUClient(port=detected_port)
-            if not modbus.connect():
-                print("Failed to connect to auto-detected port!")
-                return False
-        else:
-            print("No Modbus devices found!")
-            return False
+    if not args or args[0] in ('-h', '--help'):
+        print_command_help()
+        return
+        
+    command = ' '.join(args)
+    response = create_response(command)
+    
+    # Store verbose flag in response for reference
+    response['verbose'] = verbose
     
     try:
-        # Parse command and execute
-        if cmd == 'rc' and len(args) >= 3:
-            addr, count = int(args[1]), int(args[2])
-            unit = int(args[3]) if len(args) > 3 else 1
-            result = modbus.read_coils(addr, count, unit)
-            if result is not None:
-                print(f"Coils [{addr}-{addr+count-1}]: {result}")
-                return True
-            else:
-                print("Failed to read coils")
-                return False
+        cmd = args[0].lower()
+        response['operation'] = cmd
         
-        elif cmd == 'rh' and len(args) >= 3:
-            addr, count = int(args[1]), int(args[2])
+        # Use the configured port or auto-detect
+        configured_port = os.getenv('MODBUS_PORT', '/dev/ttyUSB0')
+        
+        # Initialize modbus client with verbose flag
+        modbus = ModbusRTUClient(port=configured_port, verbose=verbose)
+        
+        if not modbus.connect():
+            # Try auto-detecting port if configured port fails
+            detected_port = auto_detect_modbus_port()
+            if not detected_port:
+                response['error'] = "Could not auto-detect Modbus port"
+                output_json(response)
+                return
+                
+            modbus = ModbusRTUClient(port=detected_port)
+            if not modbus.connect():
+                response['error'] = f"Failed to connect to port {detected_port}"
+                output_json(response)
+                return
+            
+            response['port'] = detected_port
+            response['port_source'] = 'auto_detected'
+        else:
+            response['port'] = configured_port
+            response['port_source'] = 'configured'
+    
+        # Process commands
+        if cmd == 'rc':  # Read coils
+            if len(args) < 3:
+                response['error'] = "Usage: rc <address> <count> [unit]"
+                output_json(response)
+                return
+                
+            address = int(args[1])
+            count = int(args[2])
             unit = int(args[3]) if len(args) > 3 else 1
-            result = modbus.read_holding_registers(addr, count, unit)
+            
+            response.update({
+                'address': address,
+                'count': count,
+                'unit': unit,
+                'register_type': 'coil'
+            })
+            
+            result = modbus.read_coils(address, count, unit)
             if result is not None:
-                print(f"Holding registers [{addr}-{addr+count-1}]: {result}")
-                return True
+                response.update({
+                    'success': True,
+                    'data': {
+                        'start_address': address,
+                        'end_address': address + count - 1,
+                        'values': result,
+                        'values_dict': {str(i): val for i, val in enumerate(result, address)}
+                    }
+                })
             else:
-                print("Failed to read holding registers")
-                return False
+                response['error'] = "Failed to read coils"
+                
+        elif cmd == 'wc':  # Write coil
+            if len(args) < 3:
+                response['error'] = "Usage: wc <address> <value> [unit]"
+                output_json(response)
+                return
+                
+            address = int(args[1])
+            value = args[2].lower() in ('1', 'true', 'on')
+            unit = int(args[3]) if len(args) > 3 else 1
+            
+            response.update({
+                'address': address,
+                'value': value,
+                'value_display': 'ON' if value else 'OFF',
+                'unit': unit,
+                'register_type': 'coil'
+            })
+            
+            if modbus.write_coil(address, value, unit):
+                response.update({
+                    'success': True,
+                    'message': f"Coil {address} set to {'ON' if value else 'OFF'}",
+                    'data': {
+                        'address': address,
+                        'value': value,
+                        'value_display': 'ON' if value else 'OFF'
+                    }
+                })
+            else:
+                response['error'] = f"Failed to write coil {address}"
+                
+        elif cmd == 'ri':  # Read discrete inputs
+            if len(args) < 3:
+                response['error'] = "Usage: ri <address> <count> [unit]"
+                output_json(response)
+                return
+                
+            address = int(args[1])
+            count = int(args[2])
+            unit = int(args[3]) if len(args) > 3 else 1
+            
+            response.update({
+                'address': address,
+                'count': count,
+                'unit': unit,
+                'register_type': 'discrete_input'
+            })
+            
+            result = modbus.read_discrete_inputs(address, count, unit)
+            if result is not None:
+                response.update({
+                    'success': True,
+                    'data': {
+                        'address': address,
+                        'count': count,
+                        'values': [bool(v) for v in result],
+                        'values_display': ['ON' if v else 'OFF' for v in result]
+                    },
+                    'message': f"Read {count} discrete inputs starting at address {address}"
+                })
+            else:
+                response['error'] = "Failed to read discrete inputs"
+                
+        elif cmd == 'rh':  # Read holding registers
+            if len(args) < 3:
+                response['error'] = "Usage: rh <address> <count> [unit]"
+                output_json(response)
+                return
+                
+            address = int(args[1])
+            count = int(args[2])
+            unit = int(args[3]) if len(args) > 3 else 1
+            
+            response.update({
+                'address': address,
+                'count': count,
+                'unit': unit,
+                'register_type': 'holding_register'
+            })
+            
+            result = modbus.read_holding_registers(address, count, unit)
+            if result is not None:
+                response.update({
+                    'success': True,
+                    'data': {
+                        'start_address': address,
+                        'end_address': address + count - 1,
+                        'values': result,
+                        'values_dict': {str(i): val for i, val in enumerate(result, address)},
+                        'hex_values': [f"0x{val:04X}" for val in result],
+                        'binary_values': [f"{val:016b}" for val in result]
+                    }
+                })
+            else:
+                response['error'] = "Failed to read holding registers"
+                
+        elif cmd == 'wh':  # Write holding register
+            if len(args) < 3:
+                response['error'] = "Usage: wh <address> <value> [unit]"
+                output_json(response)
+                return
+                
+            address = int(args[1])
+            value = int(args[2])
+            unit = int(args[3]) if len(args) > 3 else 1
+            
+            response.update({
+                'address': address,
+                'value': value,
+                'unit': unit,
+                'register_type': 'holding_register',
+                'value_hex': f"0x{value:04X}",
+                'value_binary': f"{value:016b}"
+            })
+            
+            if modbus.write_register(address, value, unit):
+                response.update({
+                    'success': True,
+                    'message': f"Holding register {address} set to {value}",
+                    'data': {
+                        'address': address,
+                        'value': value,
+                        'value_hex': f"0x{value:04X}",
+                        'value_binary': f"{value:016b}"
+                    }
+                })
+            else:
+                response['error'] = f"Failed to write holding register {address}"
         
         elif cmd == 'ri' and len(args) >= 3:
             addr, count = int(args[1]), int(args[2])
             unit = int(args[3]) if len(args) > 3 else 1
             result = modbus.read_input_registers(addr, count, unit)
             if result is not None:
-                print(f"Input registers [{addr}-{addr+count-1}]: {result}")
-                return True
+                response.update({
+                    'success': True,
+                    'data': {
+                        'start_address': addr,
+                        'end_address': addr + count - 1,
+                        'values': result,
+                        'values_dict': {str(i): val for i, val in enumerate(result, addr)},
+                        'hex_values': [f"0x{val:04X}" for val in result],
+                        'binary_values': [f"{val:016b}" for val in result]
+                    }
+                })
             else:
-                print("Failed to read input registers")
-                return False
-        
+                response['error'] = "Failed to read input registers"
+                
         elif cmd == 'rd' and len(args) >= 3:
             addr, count = int(args[1]), int(args[2])
             unit = int(args[3]) if len(args) > 3 else 1
             result = modbus.read_discrete_inputs(addr, count, unit)
             if result is not None:
-                print(f"Discrete inputs [{addr}-{addr+count-1}]: {result}")
-                return True
+                response.update({
+                    'success': True,
+                    'data': {
+                        'start_address': addr,
+                        'end_address': addr + count - 1,
+                        'values': result,
+                        'values_dict': {str(i): val for i, val in enumerate(result, addr)}
+                    }
+                })
             else:
-                print("Failed to read discrete inputs")
-                return False
-        
+                response['error'] = "Failed to read discrete inputs"
+                
         elif cmd == 'wc' and len(args) >= 3:
             addr, value = int(args[1]), bool(int(args[2]))
             unit = int(args[3]) if len(args) > 3 else 1
-            result = modbus.write_coil(addr, value, unit)
-            if result:
-                print(f"Coil {addr} set to {'ON' if value else 'OFF'}")
-                return True
+            response.update({
+                'address': addr,
+                'value': value,
+                'value_display': 'ON' if value else 'OFF',
+                'unit': unit,
+                'register_type': 'coil'
+            })
+            
+            if modbus.write_coil(addr, value, unit):
+                response.update({
+                    'success': True,
+                    'message': f"Coil {addr} set to {'ON' if value else 'OFF'}",
+                    'data': {
+                        'address': addr,
+                        'value': value,
+                        'value_display': 'ON' if value else 'OFF'
+                    }
+                })
             else:
-                print(f"Failed to write coil {addr}")
-                return False
+                response['error'] = f"Failed to write coil {addr}"
         
         elif cmd == 'wr' and len(args) >= 3:
             addr, value = int(args[1]), int(args[2])
             unit = int(args[3]) if len(args) > 3 else 1
-            result = modbus.write_register(addr, value, unit)
-            if result:
-                print(f"Register {addr} set to {value}")
-                return True
-            else:
-                print(f"Failed to write register {addr}")
-                return False
-        
+            response.update({
+                'address': addr,
+                'value': value,
+                'unit': unit,
+                'register_type': 'holding_register',
+                'value_hex': f"0x{value:04X}",
+                'value_binary': f"{value:016b}"
+            })
+            
+            if modbus.write_register(addr, value, unit):
+                response.update({
+                    'success': True,
+                    'message': f"Holding register {addr} set to {value}",
+                    'data': {
+                        'address': addr,
+                        'value': value,
+                        'value_hex': f"0x{value:04X}",
+                        'value_binary': f"{value:016b}"
+                    }
+                })
         else:
-            print(f"Unknown command or invalid arguments: {' '.join(args)}")
+            response['error'] = f"Unknown command or invalid arguments: {' '.join(args)}"
             print_command_help()
-            return False
-    
-    except ValueError as e:
-        print(f"Invalid parameter: {e}")
-        print_command_help()
-        return False
+            
     except Exception as e:
-        print(f"Error: {e}")
-        return False
+        response['error'] = str(e)
     finally:
         modbus.disconnect()
+        output_json(response)
 
 
 def print_command_help():
     """Print help for command-line usage"""
-    print("\nUsage: python mod.py <command> <args>")
-    print("\nAvailable commands:")
-    print("  rc <addr> <count> [unit] - Read coils")
-    print("  rh <addr> <count> [unit] - Read holding registers")
-    print("  ri <addr> <count> [unit] - Read input registers")
-    print("  rd <addr> <count> [unit] - Read discrete inputs")
-    print("  wc <addr> <value> [unit] - Write coil (0/1)")
-    print("  wr <addr> <value> [unit] - Write register")
-    print("\nExamples:")
-    print("  python mod.py wc 0 1     # Turn ON output 0")
-    print("  python mod.py wc 0 0     # Turn OFF output 0")
-    print("  python mod.py rc 0 8     # Read 8 coils from address 0")
-    print("  python mod.py rh 0 4     # Read 4 holding registers")
+    print("""
+Modbus RTU Command Line Tool
+
+Usage:
+  python mod.py [options] <command> [args...]
+
+Options:
+  -v, --verbose    Enable verbose logging output
+  -h, --help       Show this help message
+
+Commands:
+  rc <address> <count> [unit]  Read coils
+  wc <address> <value> [unit]  Write coil (value: 0/1, true/false, on/off)
+  ri <address> <count> [unit]  Read discrete inputs
+  rh <address> <count> [unit]  Read holding registers
+  wh <address> <value> [unit]  Write holding register
+  --interactive                Start interactive mode
+  --demo                       Run demo sequence
+
+Examples:
+  python mod.py -v rc 0 8 1    # Read 8 coils with verbose logging
+  python mod.py wc 0 on 1       # Turn on coil at address 0, unit 1
+  python mod.py rh 0 5 1        # Read 5 holding registers
+""")
     print("  python mod.py wr 1 500   # Write 500 to register 1")
     print("\nOther modes:")
     print("  python mod.py            # Demo mode")
