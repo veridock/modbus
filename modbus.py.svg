@@ -1,0 +1,532 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xhtml="http://www.w3.org/1999/xhtml"
+     width="100%"
+     height="100%"
+     viewBox="0 0 800 600"
+     preserveAspectRatio="xMidYMid meet">
+
+    <title>Modbus RTU IO 8CH Control System - HTML/SVG Hybrid</title>
+    <desc>Mobile-friendly control interface with HTML buttons in SVG</desc>
+
+
+    <?py
+import requests
+import os
+from datetime import datetime
+
+MODBUS_API = os.getenv("MODBUS_API", "http://localhost:8090")
+REFRESH = os.getenv("AUTO_REFRESH_INTERVAL", "3000")
+now = datetime.now().strftime("%H:%M:%S")
+
+try:
+    res = requests.get(f"{MODBUS_API}/status", timeout=2)
+    data = res.json()
+    outputs = data.get("outputs", [False]*8)
+    connected = data.get("connected", False)
+except Exception as e:
+    outputs = [False]*8
+    connected = False
+    error_msg = str(e)
+    ?>
+
+    <text x="100" y="40" font-size="18" fill="black">
+        API: <?py= MODBUS_API ?>
+    </text>
+    <text x="100" y="70" font-size="18" fill="black">
+        Connected: <?py= 'Yes' if connected else 'No' ?>
+    </text>
+    <text x="100" y="100" font-size="18" fill="black">
+        Refresh Interval: <?py= REFRESH ?> ms
+    </text>
+    <text x="100" y="130" font-size="18" fill="black">
+        Last Update: <?py= now ?>
+    </text>
+
+    <defs>
+        <!-- Gradients -->
+        <linearGradient id="bgGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style="stop-color:#f5f5f5;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#e0e0e0;stop-opacity:1" />
+        </linearGradient>
+
+        <!-- Styles -->
+        <style>
+            /* Channel container */
+            .channel-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            padding: 5px;
+            /*background-color: #f5f5f5;*/
+            }
+
+            /* Button styles */
+            .control-button {
+            width: 70px;
+            height: 70px;
+            border: none;
+            border-radius: 8px;
+            background: linear-gradient(180deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            font-family: Arial, sans-serif;
+            }
+
+            .control-button:hover {
+            background: linear-gradient(180deg, #45a049 0%, #388E3C 100%);
+            transform: scale(1.05);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            }
+
+            .control-button:active {
+            transform: scale(0.95);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+            }
+
+            .control-button[data-state="true"] {
+            background: linear-gradient(180deg, #2e7d32 0%, #1b5e20 100%);
+            box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+            }
+
+            .control-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            }
+
+            /* LED indicator styles */
+            .led-indicator {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #ccc;
+            border: 1px solid #999;
+            transition: all 0.3s ease;
+            }
+
+            .led-indicator.active {
+            background: #1952ff;
+            border-color: #0022c3;
+            box-shadow: 0 0 10px rgb(75, 88, 136);
+            }
+
+            /* Channel label */
+            .channel-label {
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+            font-family: Arial, sans-serif;
+            }
+
+            /* Input channel styles */
+            .input-channel-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            padding: 5px;
+            }
+
+            .input-label {
+            font-size: 14px;
+            color: #444;
+            font-weight: bold;
+            font-family: Arial, sans-serif;
+            }
+
+            .input-status {
+            font-size: 12px;
+            color: #666;
+            font-family: Arial, sans-serif;
+            }
+
+            /* Section styles */
+            .section-bg {
+            fill: white;
+            stroke: #ddd;
+            stroke-width: 1;
+            rx: 10;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+            }
+
+            /* Loading animation */
+            @keyframes pulse {
+            0% { opacity: 0.6; }
+            50% { opacity: 1.0; }
+            100% { opacity: 0.6; }
+            }
+
+            .control-button.loading {
+            animation: pulse 1.5s infinite;
+            }
+
+            /* Connection status */
+            @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.3; }
+            }
+
+            .disconnected {
+            fill: #f44336;
+            animation: blink 1s infinite;
+            }
+
+            .connected {
+            fill: #4CAF50;
+            }
+
+            /* Notification styles */
+            .notification-box {
+            fill: #4CAF50;
+            rx: 5;
+            }
+
+            .notification-box.error {
+            fill: #f44336;
+            }
+
+            .notification-text {
+            fill: white;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            text-anchor: middle;
+            }
+        </style>
+    </defs>
+
+    <!-- Background -->
+    <rect width="100%" height="100%" fill="url(#bgGradient)"/>
+
+    <!-- Header -->
+    <text x="400" y="40" text-anchor="middle" font-family="Arial, sans-serif"
+          font-size="30" font-weight="bold" fill="#333">Modbus RTU IO 8CH Control Panel</text>
+
+    <!-- Digital Outputs Section -->
+    <g id="outputs-section" transform="translate(0, 60)">
+        <rect x="20" y="0" width="760" height="190" class="section-bg"/>
+        <text x="40" y="30" font-family="Arial, sans-serif" font-size="18"
+              font-weight="bold" fill="#444">Digital Outputs (DO)</text>
+
+        <!-- Output channels grid - 2 rows layout -->
+        <g id="outputs-grid" transform="translate(40, 50)">
+            <!-- First row -->
+            <foreignObject x="0" y="0" width="85" height="120">
+                <div class="channel-item" xmlns="http://www.w3.org/1999/xhtml">
+                    <button class="control-button" id="btn-out-0" onclick="toggleOutput(0)">DO0</button>
+                    <div class="led-indicator" id="led-out-0"></div>
+                    <div class="channel-label">Ch 0</div>
+                </div>
+            </foreignObject>
+
+            <foreignObject x="90" y="0" width="85" height="120">
+                <div class="channel-item" xmlns="http://www.w3.org/1999/xhtml">
+                    <button class="control-button" id="btn-out-1" onclick="toggleOutput(1)">DO1</button>
+                    <div class="led-indicator" id="led-out-1"></div>
+                    <div class="channel-label">Ch 1</div>
+                </div>
+            </foreignObject>
+
+            <foreignObject x="180" y="0" width="85" height="120">
+                <div class="channel-item" xmlns="http://www.w3.org/1999/xhtml">
+                    <button class="control-button" id="btn-out-2" onclick="toggleOutput(2)">DO2</button>
+                    <div class="led-indicator" id="led-out-2"></div>
+                    <div class="channel-label">Ch 2</div>
+                </div>
+            </foreignObject>
+
+            <foreignObject x="270" y="0" width="85" height="120">
+                <div class="channel-item" xmlns="http://www.w3.org/1999/xhtml">
+                    <button class="control-button" id="btn-out-3" onclick="toggleOutput(3)">DO3</button>
+                    <div class="led-indicator" id="led-out-3"></div>
+                    <div class="channel-label">Ch 3</div>
+                </div>
+            </foreignObject>
+
+            <!-- Second row -->
+            <foreignObject x="360" y="0" width="85" height="120">
+                <div class="channel-item" xmlns="http://www.w3.org/1999/xhtml">
+                    <button class="control-button" id="btn-out-4" onclick="toggleOutput(4)">DO4</button>
+                    <div class="led-indicator" id="led-out-4"></div>
+                    <div class="channel-label">Ch 4</div>
+                </div>
+            </foreignObject>
+
+            <foreignObject x="450" y="0" width="85" height="120">
+                <div class="channel-item" xmlns="http://www.w3.org/1999/xhtml">
+                    <button class="control-button" id="btn-out-5" onclick="toggleOutput(5)">DO5</button>
+                    <div class="led-indicator" id="led-out-5"></div>
+                    <div class="channel-label">Ch 5</div>
+                </div>
+            </foreignObject>
+
+            <foreignObject x="540" y="0" width="85" height="120">
+                <div class="channel-item" xmlns="http://www.w3.org/1999/xhtml">
+                    <button class="control-button" id="btn-out-6" onclick="toggleOutput(6)">DO6</button>
+                    <div class="led-indicator" id="led-out-6"></div>
+                    <div class="channel-label">Ch 6</div>
+                </div>
+            </foreignObject>
+
+            <foreignObject x="630" y="0" width="85" height="120">
+                <div class="channel-item" xmlns="http://www.w3.org/1999/xhtml">
+                    <button class="control-button" id="btn-out-7" onclick="toggleOutput(7)">DO7</button>
+                    <div class="led-indicator" id="led-out-7"></div>
+                    <div class="channel-label">Ch 7</div>
+                </div>
+            </foreignObject>
+        </g>
+    </g>
+
+    <!-- Digital Inputs Section -->
+    <g id="inputs-section" transform="translate(0, 270)">
+        <rect x="20" y="0" width="760" height="140" class="section-bg"/>
+        <text x="40" y="30" font-family="Arial, sans-serif" font-size="18"
+              font-weight="bold" fill="#444">Digital Inputs (DI)</text>
+
+        <!-- Input channels grid -->
+        <g id="inputs-grid" transform="translate(40, 50)">
+            <!-- Inputs will be generated dynamically or can be added statically here -->
+            <foreignObject x="0" y="0" width="85" height="80">
+                <div class="input-channel-item" xmlns="http://www.w3.org/1999/xhtml">
+                    <div class="input-label">DI0</div>
+                    <div class="led-indicator" id="led-in-0"></div>
+                    <div class="input-status" id="status-in-0">LOW</div>
+                </div>
+            </foreignObject>
+
+            <foreignObject x="90" y="0" width="85" height="80">
+                <div class="input-channel-item" xmlns="http://www.w3.org/1999/xhtml">
+                    <div class="input-label">DI1</div>
+                    <div class="led-indicator" id="led-in-1"></div>
+                    <div class="input-status" id="status-in-1">LOW</div>
+                </div>
+            </foreignObject>
+
+            <foreignObject x="180" y="0" width="85" height="80">
+                <div class="input-channel-item" xmlns="http://www.w3.org/1999/xhtml">
+                    <div class="input-label">DI2</div>
+                    <div class="led-indicator" id="led-in-2"></div>
+                    <div class="input-status" id="status-in-2">LOW</div>
+                </div>
+            </foreignObject>
+
+            <foreignObject x="270" y="0" width="85" height="80">
+                <div class="input-channel-item" xmlns="http://www.w3.org/1999/xhtml">
+                    <div class="input-label">DI3</div>
+                    <div class="led-indicator" id="led-in-3"></div>
+                    <div class="input-status" id="status-in-3">LOW</div>
+                </div>
+            </foreignObject>
+
+            <foreignObject x="360" y="0" width="85" height="80">
+                <div class="input-channel-item" xmlns="http://www.w3.org/1999/xhtml">
+                    <div class="input-label">DI4</div>
+                    <div class="led-indicator" id="led-in-4"></div>
+                    <div class="input-status" id="status-in-4">LOW</div>
+                </div>
+            </foreignObject>
+
+            <foreignObject x="450" y="0" width="85" height="80">
+                <div class="input-channel-item" xmlns="http://www.w3.org/1999/xhtml">
+                    <div class="input-label">DI5</div>
+                    <div class="led-indicator" id="led-in-5"></div>
+                    <div class="input-status" id="status-in-5">LOW</div>
+                </div>
+            </foreignObject>
+
+            <foreignObject x="540" y="0" width="85" height="80">
+                <div class="input-channel-item" xmlns="http://www.w3.org/1999/xhtml">
+                    <div class="input-label">DI6</div>
+                    <div class="led-indicator" id="led-in-6"></div>
+                    <div class="input-status" id="status-in-6">LOW</div>
+                </div>
+            </foreignObject>
+
+            <foreignObject x="630" y="0" width="85" height="80">
+                <div class="input-channel-item" xmlns="http://www.w3.org/1999/xhtml">
+                    <div class="input-label">DI7</div>
+                    <div class="led-indicator" id="led-in-7"></div>
+                    <div class="input-status" id="status-in-7">LOW</div>
+                </div>
+            </foreignObject>
+        </g>
+    </g>
+
+    <!-- Info Section -->
+    <g id="info-section" transform="translate(0, 430)">
+        <rect x="20" y="0" width="760" height="100" class="section-bg"/>
+        <text x="40" y="30" font-family="Arial, sans-serif" font-size="18"
+              font-weight="bold" fill="#444">Device Information</text>
+
+        <g transform="translate(40, 80)">
+            <text x="0" y="0" font-family="Arial, sans-serif" font-size="14" fill="#666">
+                <tspan font-weight="bold">Address:</tspan> 1
+            </text>
+            <text x="150" y="0" font-family="Arial, sans-serif" font-size="14" fill="#666">
+                <tspan font-weight="bold">Baud:</tspan> 9600
+            </text>
+            <text x="280" y="0" font-family="Arial, sans-serif" font-size="14" fill="#666">
+                <tspan font-weight="bold">Port:</tspan> {{ MODBUS_PORT }}
+            </text>
+            <text x="500" y="0" font-family="Arial, sans-serif" font-size="14" fill="#666">
+                <tspan font-weight="bold">Refresh:</tspan> {{ REFRESH/1000 }}s
+            </text>
+        </g>
+
+        <g transform="translate(240, 30)">
+            <circle cx="5" cy="-5" r="5" class="disconnected" id="connection-led"/>
+            <text x="20" y="0" font-family="Arial, sans-serif" font-size="14" fill="#666" id="connection-text">
+                Disconnected
+            </text>
+            <text x="320" y="0" text-anchor="end" font-family="Arial, sans-serif" font-size="14" fill="#666">
+                Last Update: <tspan id="last-update">{{ datetime.now().strftime('%H:%M:%S') }}</tspan>
+            </text>
+        </g>
+    </g>
+
+    <!-- Notification area -->
+    <g id="notification-area" transform="translate(30, 540)" style="opacity: 0">
+        <rect x="0" y="0" width="740" height="50" class="notification-box" id="notification-box"/>
+        <text x="47%" y="30" class="notification-text" id="notification-text">Notification</text>
+    </g>
+
+    <script type="text/javascript"><![CDATA[
+        const API_BASE_URL = '<?py= API_BASE_URL ?>';
+        const AUTO_REFRESH = '<?py= REFRESH ?>';
+
+        // Toggle output
+        function toggleOutput(channel) {
+            const btn = document.getElementById(`btn-out-${channel}`);
+            btn.disabled = true;
+            btn.classList.add('loading');
+
+            fetch(API_BASE_URL + '/control', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ channel: channel, action: 'toggle' })
+            })
+            .then(response => {
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                return response.json();
+            })
+            .then(data => {
+                showNotification(`Output ${channel + 1} toggled`, 'success');
+                fetchAndUpdateStates();
+            })
+            .catch(error => {
+                showNotification(`Error: ${error.message}`, 'error');
+            })
+            .finally(() => {
+                btn.disabled = false;
+                btn.classList.remove('loading');
+            });
+        }
+
+        // Show notification
+        function showNotification(message, type) {
+            const area = document.getElementById('notification-area');
+            const box = document.getElementById('notification-box');
+            const text = document.getElementById('notification-text');
+
+            box.setAttribute('class', type === 'success' ? 'notification-box' : 'notification-box error');
+            text.textContent = message;
+
+            area.style.opacity = '1';
+            area.style.transition = 'opacity 0.3s';
+
+            setTimeout(() => {
+                area.style.opacity = '0';
+            }, 3000);
+        }
+
+        // Update UI with state data
+        function updateUI(data) {
+            // Update outputs
+            for (let i = 0; i < 8; i++) {
+                const btn = document.getElementById(`btn-out-${i}`);
+                const led = document.getElementById(`led-out-${i}`);
+
+                if (btn) {
+                    btn.setAttribute('data-state', data.outputs[i] ? 'true' : 'false');
+                }
+
+                if (led) {
+                    if (data.outputs[i]) {
+                        led.classList.add('active');
+                    } else {
+                        led.classList.remove('active');
+                    }
+                }
+            }
+
+            // Update inputs
+            for (let i = 0; i < 8; i++) {
+                const led = document.getElementById(`led-in-${i}`);
+                const status = document.getElementById(`status-in-${i}`);
+
+                if (led) {
+                    if (data.inputs[i]) {
+                        led.classList.add('active');
+                    } else {
+                        led.classList.remove('active');
+                    }
+                }
+
+                if (status) {
+                    status.textContent = data.inputs[i] ? 'HIGH' : 'LOW';
+                }
+            }
+
+            // Update connection status
+            const connLed = document.getElementById('connection-led');
+            const connText = document.getElementById('connection-text');
+
+            if (data.connected) {
+                connLed.setAttribute('class', 'connected');
+                connText.textContent = 'Connected';
+            } else {
+                connLed.setAttribute('class', 'disconnected');
+                connText.textContent = 'Disconnected';
+            }
+
+            // Update timestamp
+            document.getElementById('last-update').textContent = new Date().toLocaleTimeString();
+        }
+
+        // Fetch states from API
+        function fetchAndUpdateStates() {
+            fetch(API_BASE_URL + '/status')
+                .then(response => {
+                    if (!response.ok) throw new Error('API error');
+                    return response.json();
+                })
+                .then(data => updateUI(data))
+                .catch(error => {
+                    console.error('Fetch failed:', error);
+                    const defaultData = {
+                        connected: false,
+                        inputs: new Array(8).fill(false),
+                        outputs: new Array(8).fill(false)
+                    };
+                    updateUI(defaultData);
+                });
+        }
+
+        // Initialize on load
+        window.addEventListener('load', function() {
+            console.log('Modbus Control Panel initialized');
+            fetchAndUpdateStates();
+            setInterval(fetchAndUpdateStates, AUTO_REFRESH);
+        });
+
+        // Also try immediate initialization for SVG context
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+            fetchAndUpdateStates();
+            setInterval(fetchAndUpdateStates, AUTO_REFRESH);
+        }
+    ]]></script>
+</svg>

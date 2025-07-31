@@ -1,0 +1,375 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:svg="http://www.w3.org/2000/svg"
+           xmlns:xhtml="http://www.w3.org/1999/xhtml"
+           targetNamespace="http://www.w3.org/2000/svg"
+           elementFormDefault="qualified">
+
+    <!-- Import XHTML namespace for foreignObject content -->
+    <xs:import namespace="http://www.w3.org/1999/xhtml"
+               schemaLocation="http://www.w3.org/1999/xhtml.xsd"/>
+
+    <!-- Root SVG element definition -->
+    <xs:element name="svg" type="svg:svgType"/>
+
+    <!-- SVG Type with required attributes and structure -->
+    <xs:complexType name="svgType">
+        <xs:sequence>
+            <!-- PHP processing instructions (optional, multiple allowed) -->
+            <xs:any namespace="##other" processContents="skip" minOccurs="0" maxOccurs="unbounded"/>
+
+            <!-- Required elements in order -->
+            <xs:element name="title" type="svg:titleType" minOccurs="1" maxOccurs="1"/>
+            <xs:element name="desc" type="svg:descType" minOccurs="1" maxOccurs="1"/>
+
+            <!-- Optional metadata scripts -->
+            <xs:element name="script" type="svg:metadataScriptType" minOccurs="0" maxOccurs="unbounded"/>
+
+            <!-- Required defs section -->
+            <xs:element name="defs" type="svg:defsType" minOccurs="1" maxOccurs="1"/>
+
+            <!-- SVG content elements -->
+            <xs:choice minOccurs="0" maxOccurs="unbounded">
+                <xs:element name="rect" type="svg:rectType"/>
+                <xs:element name="circle" type="svg:circleType"/>
+                <xs:element name="ellipse" type="svg:ellipseType"/>
+                <xs:element name="line" type="svg:lineType"/>
+                <xs:element name="polyline" type="svg:polylineType"/>
+                <xs:element name="polygon" type="svg:polygonType"/>
+                <xs:element name="path" type="svg:pathType"/>
+                <xs:element name="text" type="svg:textType"/>
+                <xs:element name="image" type="svg:imageType"/>
+                <xs:element name="foreignObject" type="svg:foreignObjectType"/>
+                <xs:element name="script" type="svg:scriptType"/>
+                <!-- PHP processing instructions -->
+                <xs:any namespace="##other" processContents="skip"/>
+            </xs:choice>
+        </xs:sequence>
+
+        <!-- Required SVG attributes -->
+        <xs:attribute name="xmlns" type="xs:anyURI" use="required" fixed="http://www.w3.org/2000/svg"/>
+        <xs:attribute name="xmlns:xhtml" type="xs:anyURI" use="required" fixed="http://www.w3.org/1999/xhtml"/>
+        <xs:attribute name="width" type="svg:lengthType" use="required"/>
+        <xs:attribute name="height" type="svg:lengthType" use="required"/>
+        <xs:attribute name="viewBox" type="svg:viewBoxType" use="required"/>
+        <xs:anyAttribute processContents="lax"/>
+    </xs:complexType>
+
+    <!-- Title element with PHP content support -->
+    <xs:complexType name="titleType" mixed="true">
+        <xs:sequence>
+            <xs:any namespace="##other" processContents="skip" minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <!-- Description element -->
+    <xs:complexType name="descType" mixed="true">
+        <xs:sequence>
+            <xs:any namespace="##other" processContents="skip" minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <!-- Metadata script for JSON configuration -->
+    <xs:complexType name="metadataScriptType">
+        <xs:simpleContent>
+            <xs:extension base="xs:string">
+                <xs:attribute name="type" type="xs:string" use="required" fixed="application/json"/>
+                <xs:attribute name="id" type="xs:ID" use="required"/>
+            </xs:extension>
+        </xs:simpleContent>
+    </xs:complexType>
+
+    <!-- Defs section for styles and gradients -->
+    <xs:complexType name="defsType">
+        <xs:choice minOccurs="0" maxOccurs="unbounded">
+            <xs:element name="style" type="svg:styleType"/>
+            <xs:element name="linearGradient" type="svg:linearGradientType"/>
+            <xs:element name="radialGradient" type="svg:radialGradientType"/>
+            <xs:element name="pattern" type="svg:patternType"/>
+            <xs:element name="filter" type="svg:filterType"/>
+            <xs:element name="marker" type="svg:markerType"/>
+            <xs:element name="clipPath" type="svg:clipPathType"/>
+            <xs:element name="mask" type="svg:maskType"/>
+        </xs:choice>
+    </xs:complexType>
+
+    <!-- Style element with CDATA content -->
+    <xs:complexType name="styleType">
+        <xs:simpleContent>
+            <xs:extension base="xs:string">
+                <xs:attribute name="type" type="xs:string" default="text/css"/>
+            </xs:extension>
+        </xs:simpleContent>
+    </xs:complexType>
+
+    <!-- ForeignObject for HTML content (Enhanced for modern SVG+HTML patterns) -->
+    <xs:complexType name="foreignObjectType">
+        <xs:sequence>
+            <!-- Allow XHTML content for interactive elements -->
+            <xs:choice minOccurs="0" maxOccurs="unbounded">
+                <xs:element name="button" type="svg:htmlButtonType"/>
+                <xs:element name="input" type="svg:htmlInputType"/>
+                <xs:element name="select" type="svg:htmlSelectType"/>
+                <xs:element name="textarea" type="svg:htmlTextareaType"/>
+                <xs:element name="div" type="svg:htmlDivType"/>
+                <xs:element name="span" type="svg:htmlSpanType"/>
+                <!-- Allow any other XHTML content -->
+                <xs:any namespace="http://www.w3.org/1999/xhtml" processContents="lax"/>
+            </xs:choice>
+        </xs:sequence>
+        <!-- Required positioning attributes -->
+        <xs:attribute name="x" type="xs:decimal" use="required"/>
+        <xs:attribute name="y" type="xs:decimal" use="required"/>
+        <xs:attribute name="width" type="xs:decimal" use="required"/>
+        <xs:attribute name="height" type="xs:decimal" use="required"/>
+        <xs:anyAttribute processContents="lax"/>
+    </xs:complexType>
+
+    <!-- HTML Button element definition (for foreignObject content) -->
+    <xs:complexType name="htmlButtonType" mixed="true">
+        <xs:sequence>
+            <xs:any namespace="http://www.w3.org/1999/xhtml" processContents="lax" minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+        <!-- Required XHTML namespace -->
+        <xs:attribute name="xmlns" type="xs:anyURI" use="required" fixed="http://www.w3.org/1999/xhtml"/>
+        <!-- Common HTML button attributes -->
+        <xs:attribute name="id" type="xs:ID"/>
+        <xs:attribute name="class" type="xs:string"/>
+        <xs:attribute name="style" type="xs:string"/>
+        <xs:attribute name="type" type="xs:string" default="button"/>
+        <xs:attribute name="disabled" type="xs:boolean"/>
+        <xs:anyAttribute processContents="lax"/>
+    </xs:complexType>
+
+    <!-- HTML Input element definition -->
+    <xs:complexType name="htmlInputType">
+        <xs:attribute name="xmlns" type="xs:anyURI" use="required" fixed="http://www.w3.org/1999/xhtml"/>
+        <xs:attribute name="id" type="xs:ID"/>
+        <xs:attribute name="class" type="xs:string"/>
+        <xs:attribute name="style" type="xs:string"/>
+        <xs:attribute name="type" type="xs:string" use="required"/>
+        <xs:attribute name="name" type="xs:string"/>
+        <xs:attribute name="value" type="xs:string"/>
+        <xs:anyAttribute processContents="lax"/>
+    </xs:complexType>
+
+    <!-- HTML Select element definition -->
+    <xs:complexType name="htmlSelectType" mixed="true">
+        <xs:sequence>
+            <xs:any namespace="http://www.w3.org/1999/xhtml" processContents="lax" minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+        <xs:attribute name="xmlns" type="xs:anyURI" use="required" fixed="http://www.w3.org/1999/xhtml"/>
+        <xs:attribute name="id" type="xs:ID"/>
+        <xs:attribute name="class" type="xs:string"/>
+        <xs:attribute name="style" type="xs:string"/>
+        <xs:attribute name="name" type="xs:string"/>
+        <xs:anyAttribute processContents="lax"/>
+    </xs:complexType>
+
+    <!-- HTML Textarea element definition -->
+    <xs:complexType name="htmlTextareaType" mixed="true">
+        <xs:attribute name="xmlns" type="xs:anyURI" use="required" fixed="http://www.w3.org/1999/xhtml"/>
+        <xs:attribute name="id" type="xs:ID"/>
+        <xs:attribute name="class" type="xs:string"/>
+        <xs:attribute name="style" type="xs:string"/>
+        <xs:attribute name="name" type="xs:string"/>
+        <xs:attribute name="rows" type="xs:positiveInteger"/>
+        <xs:attribute name="cols" type="xs:positiveInteger"/>
+        <xs:anyAttribute processContents="lax"/>
+    </xs:complexType>
+
+    <!-- HTML Div element definition -->
+    <xs:complexType name="htmlDivType" mixed="true">
+        <xs:sequence>
+            <xs:any namespace="http://www.w3.org/1999/xhtml" processContents="lax" minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+        <xs:attribute name="xmlns" type="xs:anyURI" use="required" fixed="http://www.w3.org/1999/xhtml"/>
+        <xs:attribute name="id" type="xs:ID"/>
+        <xs:attribute name="class" type="xs:string"/>
+        <xs:attribute name="style" type="xs:string"/>
+        <xs:anyAttribute processContents="lax"/>
+    </xs:complexType>
+
+    <!-- HTML Span element definition -->
+    <xs:complexType name="htmlSpanType" mixed="true">
+        <xs:sequence>
+            <xs:any namespace="http://www.w3.org/1999/xhtml" processContents="lax" minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+        <xs:attribute name="xmlns" type="xs:anyURI" use="required" fixed="http://www.w3.org/1999/xhtml"/>
+        <xs:attribute name="id" type="xs:ID"/>
+        <xs:attribute name="class" type="xs:string"/>
+        <xs:attribute name="style" type="xs:string"/>
+        <xs:anyAttribute processContents="lax"/>
+    </xs:complexType>
+
+    <!-- JavaScript script element -->
+    <xs:complexType name="scriptType">
+        <xs:simpleContent>
+            <xs:extension base="xs:string">
+                <xs:attribute name="type" type="xs:string" default="text/javascript"/>
+                <xs:anyAttribute processContents="lax"/>
+            </xs:extension>
+        </xs:simpleContent>
+    </xs:complexType>
+
+    <!-- Basic SVG shape elements -->
+    <!-- WARNING: Avoid using rect elements as interactive buttons. -->
+    <!-- Use foreignObject with HTML button elements for better accessibility and functionality. -->
+    <xs:complexType name="rectType">
+        <xs:attribute name="x" type="xs:decimal" use="required"/>
+        <xs:attribute name="y" type="xs:decimal" use="required"/>
+        <xs:attribute name="width" type="xs:decimal" use="required"/>
+        <xs:attribute name="height" type="xs:decimal" use="required"/>
+        <xs:attribute name="rx" type="xs:decimal"/>
+        <xs:attribute name="ry" type="xs:decimal"/>
+        <!-- Discourage button-like usage patterns -->
+        <!-- <xs:attribute name="onclick" type="xs:string"/> DEPRECATED: Use foreignObject + HTML button instead -->
+        <!-- <xs:attribute name="class" pattern=".*button.*"/> DISCOURAGED: Use HTML buttons in foreignObject -->
+        <xs:anyAttribute processContents="lax"/>
+    </xs:complexType>
+
+    <xs:complexType name="circleType">
+        <xs:attribute name="cx" type="xs:decimal" use="required"/>
+        <xs:attribute name="cy" type="xs:decimal" use="required"/>
+        <xs:attribute name="r" type="xs:decimal" use="required"/>
+        <xs:anyAttribute processContents="lax"/>
+    </xs:complexType>
+
+    <xs:complexType name="ellipseType">
+        <xs:attribute name="cx" type="xs:decimal" use="required"/>
+        <xs:attribute name="cy" type="xs:decimal" use="required"/>
+        <xs:attribute name="rx" type="xs:decimal" use="required"/>
+        <xs:attribute name="ry" type="xs:decimal" use="required"/>
+        <xs:anyAttribute processContents="lax"/>
+    </xs:complexType>
+
+    <xs:complexType name="lineType">
+        <xs:attribute name="x1" type="xs:decimal" use="required"/>
+        <xs:attribute name="y1" type="xs:decimal" use="required"/>
+        <xs:attribute name="x2" type="xs:decimal" use="required"/>
+        <xs:attribute name="y2" type="xs:decimal" use="required"/>
+        <xs:anyAttribute processContents="lax"/>
+    </xs:complexType>
+
+    <xs:complexType name="polylineType">
+        <xs:attribute name="points" type="xs:string" use="required"/>
+        <xs:anyAttribute processContents="lax"/>
+    </xs:complexType>
+
+    <xs:complexType name="polygonType">
+        <xs:attribute name="points" type="xs:string" use="required"/>
+        <xs:anyAttribute processContents="lax"/>
+    </xs:complexType>
+
+    <xs:complexType name="pathType">
+        <xs:attribute name="d" type="xs:string" use="required"/>
+        <xs:anyAttribute processContents="lax"/>
+    </xs:complexType>
+
+    <!-- Text element with mixed content -->
+    <xs:complexType name="textType" mixed="true">
+        <xs:choice minOccurs="0" maxOccurs="unbounded">
+            <xs:element name="tspan" type="svg:tspanType"/>
+            <xs:any namespace="##other" processContents="skip"/>
+        </xs:choice>
+        <xs:attribute name="x" type="xs:decimal" use="required"/>
+        <xs:attribute name="y" type="xs:decimal" use="required"/>
+        <xs:anyAttribute processContents="lax"/>
+    </xs:complexType>
+
+    <xs:complexType name="tspanType" mixed="true">
+        <xs:anyAttribute processContents="lax"/>
+    </xs:complexType>
+
+    <!-- Image element -->
+    <xs:complexType name="imageType">
+        <xs:attribute name="x" type="xs:decimal" use="required"/>
+        <xs:attribute name="y" type="xs:decimal" use="required"/>
+        <xs:attribute name="width" type="xs:decimal" use="required"/>
+        <xs:attribute name="height" type="xs:decimal" use="required"/>
+        <xs:attribute name="href" type="xs:anyURI" use="required"/>
+        <xs:anyAttribute processContents="lax"/>
+    </xs:complexType>
+
+    <!-- Gradient definitions -->
+    <xs:complexType name="linearGradientType">
+        <xs:sequence>
+            <xs:element name="stop" type="svg:stopType" minOccurs="1" maxOccurs="unbounded"/>
+        </xs:sequence>
+        <xs:attribute name="id" type="xs:ID" use="required"/>
+        <xs:attribute name="x1" type="xs:string"/>
+        <xs:attribute name="y1" type="xs:string"/>
+        <xs:attribute name="x2" type="xs:string"/>
+        <xs:attribute name="y2" type="xs:string"/>
+        <xs:anyAttribute processContents="lax"/>
+    </xs:complexType>
+
+    <xs:complexType name="radialGradientType">
+        <xs:sequence>
+            <xs:element name="stop" type="svg:stopType" minOccurs="1" maxOccurs="unbounded"/>
+        </xs:sequence>
+        <xs:attribute name="id" type="xs:ID" use="required"/>
+        <xs:anyAttribute processContents="lax"/>
+    </xs:complexType>
+
+    <xs:complexType name="stopType">
+        <xs:attribute name="offset" type="xs:string" use="required"/>
+        <xs:attribute name="style" type="xs:string"/>
+        <xs:anyAttribute processContents="lax"/>
+    </xs:complexType>
+
+    <!-- Pattern, filter, marker, clipPath, mask elements -->
+    <xs:complexType name="patternType">
+        <xs:sequence>
+            <xs:any minOccurs="0" maxOccurs="unbounded" processContents="lax"/>
+        </xs:sequence>
+        <xs:attribute name="id" type="xs:ID" use="required"/>
+        <xs:anyAttribute processContents="lax"/>
+    </xs:complexType>
+
+    <xs:complexType name="filterType">
+        <xs:sequence>
+            <xs:any minOccurs="0" maxOccurs="unbounded" processContents="lax"/>
+        </xs:sequence>
+        <xs:attribute name="id" type="xs:ID" use="required"/>
+        <xs:anyAttribute processContents="lax"/>
+    </xs:complexType>
+
+    <xs:complexType name="markerType">
+        <xs:sequence>
+            <xs:any minOccurs="0" maxOccurs="unbounded" processContents="lax"/>
+        </xs:sequence>
+        <xs:attribute name="id" type="xs:ID" use="required"/>
+        <xs:anyAttribute processContents="lax"/>
+    </xs:complexType>
+
+    <xs:complexType name="clipPathType">
+        <xs:sequence>
+            <xs:any minOccurs="0" maxOccurs="unbounded" processContents="lax"/>
+        </xs:sequence>
+        <xs:attribute name="id" type="xs:ID" use="required"/>
+        <xs:anyAttribute processContents="lax"/>
+    </xs:complexType>
+
+    <xs:complexType name="maskType">
+        <xs:sequence>
+            <xs:any minOccurs="0" maxOccurs="unbounded" processContents="lax"/>
+        </xs:sequence>
+        <xs:attribute name="id" type="xs:ID" use="required"/>
+        <xs:anyAttribute processContents="lax"/>
+    </xs:complexType>
+
+    <!-- Custom types -->
+    <xs:simpleType name="lengthType">
+        <xs:restriction base="xs:string">
+            <xs:pattern value="[0-9]+(%|px|em|ex|pt|pc|cm|mm|in)?|100%"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:simpleType name="viewBoxType">
+        <xs:restriction base="xs:string">
+            <xs:pattern value="-?[0-9]+(\.[0-9]+)?\s+-?[0-9]+(\.[0-9]+)?\s+[0-9]+(\.[0-9]+)?\s+[0-9]+(\.[0-9]+)?"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+</xs:schema>
