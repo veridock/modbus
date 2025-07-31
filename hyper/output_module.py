@@ -11,7 +11,7 @@ Usage:
     
     or as a module:
     from output_module import app
-    app.run(port=5001, host='0.0.0.0')
+    app.run(port=5002, host='0.0.0.0')
 """
 
 import os
@@ -52,6 +52,23 @@ def execute_mod_command(command_args):
     except Exception as e:
         return {'success': False, 'error': str(e)}
 
+def parse_coil_status(text):
+    """Parse coil status message to get address and status
+    
+    Args:
+        text: Status message (e.g., 'Coil 0 set to ON' or 'Coil 5 set to OFF')
+    
+    Returns:
+        tuple: (address: int, status: bool) or (None, None) if parsing fails
+    """
+    import re
+    match = re.match(r'Coil\s+(\d+)\s+set\s+to\s+(ON|OFF)', text, re.IGNORECASE)
+    if match:
+        address = int(match.group(1))
+        status = match.group(2).upper() == 'ON'
+        return address, status
+    return None, None
+
 def parse_coil_output(output, channel):
     """Parse coil read output to get boolean state for a specific channel
     
@@ -63,7 +80,13 @@ def parse_coil_output(output, channel):
         bool: The state of the specified channel, or None if parsing fails
     """
     try:
-        # Extract the list of coil states from the output
+        # First try to parse as a status message (e.g., 'Coil 0 set to ON')
+        if 'set to' in output:
+            addr, status = parse_coil_status(output)
+            if addr is not None and addr == channel:
+                return status
+        
+        # Fall back to parsing as a list of states
         start = output.find('[') + 1
         end = output.rfind(']')
         if start > 0 and end > start:
@@ -118,7 +141,7 @@ def generate_svg(channel, state):
         <script>
             function toggle() {{
                 // Submit form to toggle
-                window.location.href = '/action/toggle/{channel}';
+                window.location.href = '/module/input/{channel}';
             }}
         </script>
     </defs>
@@ -131,20 +154,50 @@ def generate_svg(channel, state):
     <text x="50" y="85" class="label">{'ON' if state else 'OFF'}</text>
 </svg>'''
 
-@app.route('/module/output/<int:channel>')
+@app.route('/module/input/<int:channel>')
 def output_module(channel):
     """Endpoint for the output module SVG"""
-    # Read all coil states (8 coils at once for efficiency)
-    result = execute_mod_command(['rc', '0', '8', str(MODBUS_UNIT)])
-    state = False
+    read_result = execute_mod_command(['rc', str(channel), '1', str(MODBUS_UNIT)])
+    print(f"Read result: {read_result}")
+
     
-    if result['success']:
-        # Parse the output to get the state of the specific channel
-        state = parse_coil_output(result['output'], channel)
-        if state is None:
-            print(f"Warning: Could not parse state for channel {channel} from output: {result['output']}")
-    else:
-        print(f"Error reading coil states: {result.get('error', 'Unknown error')}")
+    # Parse the toggle result to get the new state
+    state = None
+    if 'output' in read_result and read_result['output']:
+
+
+        if not read_result['success']:
+            return f"Error toggling coil {channel}: {read_result.get('error', 'Unknown error')}"
+        addr, status = parse_coil_status(read_result['output'])
+        print(status)
+        status = 0
+        if addr is not None and addr == channel and status == True:
+            status = 1
+
+        # Toggle the coil
+        toggle_result = execute_mod_command(['wc', str(channel), str(status), str(MODBUS_UNIT)])
+        print(f"Toggle result: {toggle_result}")
+
+
+    if state is not None:
+        print(f"Got state for channel {channel} from toggle result: {state}")
+
+    # If we couldn't get the state from the toggle result, read it explicitly
+    if state is None:
+        read_result = execute_mod_command(['rc', str(channel), '1', str(MODBUS_UNIT)])
+        print(f"Read result: {read_result}")
+        
+        if read_result['success']:
+            state = parse_coil_output(read_result['output'], channel)
+            if state is None:
+                print(f"Warning: Could not parse state for channel {channel} from output: {read_result['output']}")
+        else:
+            print(f"Error reading coil state: {read_result.get('error', 'Unknown error')}")
+    
+    # Default to False if we couldn't determine the state
+    if state is None:
+        state = False
+        print(f"Using default state (False) for channel {channel}")
     
     # Generate and return SVG
     svg = generate_svg(channel, state)
@@ -155,8 +208,8 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description='Output Module for Modbus RTU IO 8CH Control System')
     parser.add_argument('channel', type=int, nargs='?', default=1,
                        help='Channel number (1-8)')
-    parser.add_argument('--port', type=int, default=5001,
-                       help='Port to run the server on (default: 5001)')
+    parser.add_argument('--port', type=int, default=5002,
+                       help='Port to run the server on (default: 5002)')
     parser.add_argument('--host', type=str, default='0.0.0.0',
                        help='Host to bind to (default: 0.0.0.0)')
     return parser.parse_args()

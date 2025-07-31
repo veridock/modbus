@@ -50,7 +50,7 @@ MODBUS_UNIT_ID=1
 FLASK_APP=app.py
 FLASK_ENV=development
 FLASK_DEBUG=1
-FLASK_RUN_PORT=5001
+FLASK_RUN_PORT=5002
 
 # API Configuration
 API_BASE_URL=http://localhost:${FLASK_RUN_PORT}
@@ -76,7 +76,7 @@ echo "To start the application, run:"
 echo "  source venv/bin/activate  # If not already activated"
 echo "  ./start.sh"
 echo ""
-echo "Then open http://localhost:5001 in your browser"
+echo "Then open http://localhost:5002 in your browser"
 
 # Deactivate virtual environment
 deactivate

@@ -32,7 +32,7 @@
         <script>
             function toggle() {
                 // Submit form to toggle
-                window.location.href = '/action/toggle/{{ channel }}';
+                window.location.href = '/module/input/{{ channel }}';
             }
         </script>
     </defs>

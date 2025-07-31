@@ -137,7 +137,7 @@ def index():
                     {% for i in range(8) %}
                     <div class="module">
                         <iframe id="output-{{ i }}" 
-                                src="/module/output/{{ i }}" 
+                                src="/module/input/{{ i }}" 
                                 title="Output {{ i }}"></iframe>
                     </div>
                     {% endfor %}
@@ -171,7 +171,7 @@ def index():
             function refreshAll() {
                 // Refresh all modules
                 for (let i = 0; i < 8; i++) {
-                    document.getElementById('output-' + i).src = '/module/output/' + i + '?t=' + Date.now();
+                    document.getElementById('output-' + i).src = '/module/input/' + i + '?t=' + Date.now();
                     document.getElementById('input-' + i).src = '/module/input/' + i + '?t=' + Date.now();
                 }
                 // Update time
@@ -207,7 +207,7 @@ def index():
     return render_template_string(html, time=datetime.now().strftime('%H:%M:%S'))
 
 
-@app.route('/module/output/<int:channel>')
+@app.route('/module/input/<int:channel>')
 def output_module(channel):
     """Individual output button module as SVG"""
     # Read current state
@@ -250,7 +250,7 @@ def output_module(channel):
         <script>
             function toggle() {{
                 // Submit form to toggle
-                window.location.href = '/action/toggle/{channel}';
+                window.location.href = '/module/input/{channel}';
             }}
         </script>
     </defs>
@@ -308,7 +308,7 @@ def input_module(channel):
     return Response(svg, mimetype='image/svg+xml')
 
 
-@app.route('/action/toggle/<int:channel>')
+@app.route('/module/input/<int:channel>')
 def toggle_action(channel):
     """Toggle output and redirect back"""
     # First read current state
@@ -325,7 +325,7 @@ def toggle_action(channel):
     return f'''
     <html>
     <head>
-        <meta http-equiv="refresh" content="0;url=/module/output/{channel}">
+        <meta http-equiv="refresh" content="0;url=/module/input/{channel}">
     </head>
     <body>Toggling output {channel}...</body>
     </html>
@@ -370,7 +370,7 @@ def button_module(channel):
     </defs>
 
     <foreignObject x="0" y="0" width="100" height="100">
-        <xhtml:form action="/action/toggle/{channel}" method="get" 
+        <xhtml:form action="/module/input/{channel}" method="get" 
                     style="margin:0;padding:0;height:100%;">
             <xhtml:button type="submit" style="
                 width: 100%;
@@ -504,7 +504,7 @@ def widget(channel):
         </style>
         <script>
             function toggleSwitch() {{
-                window.location.href = '/action/toggle/{channel}';
+                window.location.href = '/module/input/{channel}';
             }}
         </script>
     </defs>
@@ -690,4 +690,4 @@ def demo_page():
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5001, host='0.0.0.0')
+    app.run(debug=True, port=5002, host='0.0.0.0')

@@ -27,19 +27,19 @@ Każdy element UI (przycisk, wskaźnik, przełącznik) to **osobny moduł SVG**,
 
 ## 🔧 Dostępne moduły
 
-### 1. **Output Button** (`/module/output/<channel>`)
+### 1. **Output Button** (`/module/input/<channel>`)
 Prosty przycisk do przełączania wyjść cyfrowych. Dostępny jako:
-- Endpoint w głównej aplikacji: `/module/output/<channel>`
+- Endpoint w głównej aplikacji: `/module/input/<channel>`
 - Samodzielny moduł: `./output_module.py <channel>`
 
 Przykład użycia:
 ```html
-<iframe src="http://localhost:5002/module/output/0" width="100" height="100"></iframe>
+<iframe src="http://localhost:5002/module/input/0" width="100" height="100"></iframe>
 ```
 
 Uruchomienie samodzielnego modułu:
 ```bash
-# Uruchomienie dla kanału 0 na domyślnym porcie 5001
+# Uruchomienie dla kanału 0 na domyślnym porcie 5002
 ./output_module.py 0
 
 # Z niestandardowym portem i hostem
@@ -48,7 +48,7 @@ Uruchomienie samodzielnego modułu:
 
 Dostępne parametry:
 - `channel` - numer kanału (wymagany, 0-7)
-- `--port` - port serwera (domyślnie: 5001)
+- `--port` - port serwera (domyślnie: 5002)
 - `--host` - adres hosta (domyślnie: 0.0.0.0)
 
 ### 2. **Switch Widget** (`/widget/switch/<channel>`)
@@ -90,7 +90,7 @@ Przyciski wykonujące predefiniowane komendy.
 
 ### Przykład przepływu dla przycisku:
 ```
-User clicks button → GET /action/toggle/0
+User clicks button → GET /module/input/0
     ↓
 Flask: execute_mod_command(['rc', '0', '1'])  # Read current state
     ↓
@@ -100,7 +100,7 @@ Flask: execute_mod_command(['wc', '0', '1'])  # Write new state
     ↓
 mod.py: python mod.py wc 0 1
     ↓
-Redirect → GET /module/output/0 (refreshed view)
+Redirect → GET /module/input/0 (refreshed view)
 ```
 
 ## 🎨 Tworzenie własnych dashboardów
@@ -116,18 +116,18 @@ Redirect → GET /module/output/0 (refreshed view)
     <h1>Motor Control</h1>
     
     <!-- Przełącznik dla silnika -->
-    <iframe src="http://localhost:5001/widget/switch/0" 
+    <iframe src="http://localhost:5002/widget/switch/0" 
             width="200" height="80" frameborder="0"></iframe>
     
     <!-- Status czujnika -->
-    <img src="http://localhost:5001/module/led/0" 
+    <img src="http://localhost:5002/module/led/0" 
          width="50" height="50" id="sensor1">
     
     <script>
         // Auto-refresh czujnika co sekundę
         setInterval(() => {
             document.getElementById('sensor1').src = 
-                'http://localhost:5001/module/led/0?t=' + Date.now();
+                'http://localhost:5002/module/led/0?t=' + Date.now();
         }, 1000);
     </script>
 </body>
@@ -149,7 +149,7 @@ Redirect → GET /module/output/0 (refreshed view)
 ### POST `/execute`
 Wykonaj dowolną komendę mod.py:
 ```javascript
-fetch('http://localhost:5001/execute', {
+fetch('http://localhost:5002/execute', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({command: 'rc 0 8'})
@@ -175,7 +175,7 @@ fetch('http://localhost:5001/execute', {
 python mod.py rc 0 8
 
 # Test przez API
-curl -X POST http://localhost:5001/execute \
+curl -X POST http://localhost:5002/execute \
      -H "Content-Type: application/json" \
      -d '{"command": "rc 0 8"}'
 ```
@@ -213,11 +213,11 @@ Widgety można osadzać w dowolnej aplikacji webowej:
 
 ```html
 <!-- W WordPress -->
-<iframe src="http://your-server:5001/widget/switch/0" 
+<iframe src="http://your-server:5002/widget/switch/0" 
         width="200" height="80"></iframe>
 
 <!-- W aplikacji React -->
-<img src={`http://your-server:5001/module/led/${channel}`} 
+<img src={`http://your-server:5002/module/led/${channel}`} 
      width="50" height="50" />
 
 <!-- W Node-RED Dashboard -->
