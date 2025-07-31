@@ -178,6 +178,8 @@ class ModbusClient:
         self.stopbits = stopbits
         self.bytesize = bytesize
         self.timeout = timeout or float(os.getenv('MODBUS_TIMEOUT', '1.0'))
+        # Obsługa różnych nazw zmiennych dla adresu urządzenia
+        self.unit_id = int(os.getenv('MODBUS_DEVICE_ADDRESS', os.getenv('MODBUS_UNIT_ID', '1')))
         self.client = None
         
         logger.info(f"Initializing Modbus RTU client on {self.port}")
