@@ -11,6 +11,7 @@ import os
 # Import our new utility modules
 from config import *
 from utils.modbus_client import modbus_client
+from utils.svg_processor import svg_processor
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -208,6 +209,22 @@ def module_input(channel):
     state = modbus_client.read_coil(channel)
     response = render_template('output.svg', channel=channel, state=state)
     return Response(response, mimetype='image/svg+xml')
+
+
+@app.route('/module/dynamic/<int:channel>')
+def module_dynamic(channel):
+    """Dynamic digital output widget with embedded Python processing"""
+    state = modbus_client.read_coil(channel)
+    
+    # Use the SVG processor for embedded Python blocks
+    context = {
+        'channel': channel,
+        'state': state,
+        'debug_mode': True  # Enable debug mode for testing
+    }
+    
+    svg_content = svg_processor.process_svg('dynamic_output.svg', context)
+    return Response(svg_content, mimetype='image/svg+xml')
 
 
 @app.route('/module/button/<int:channel>')
