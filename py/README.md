@@ -45,14 +45,46 @@ This is a Flask-based web application that can render dynamic content using Pyth
    ./stop.sh
    ```
 
+## Code Style Guidelines
+
+### Variable Usage
+
+1. **Single Variables**: Use single variables for better readability and maintainability. This makes it easier to track where values are used and modified.
+
+   ```python
+   # Good
+   MODBUS_API = os.getenv("MODBUS_API", "http://localhost:8090")
+   REFRESH = os.getenv("AUTO_REFRESH_INTERVAL", "3000")
+   
+   # Avoid
+   config = {
+       "api": {
+           "baseUrl": os.getenv("MODBUS_API", "http://localhost:8090"),
+           "refresh": os.getenv("AUTO_REFRESH_INTERVAL", "3000")
+       }
+   }
+   ```
+
+2. **Python Code Blocks**: Always use `<?py print ... ?>` instead of `<?py= ... ?>` for output. This is more explicit and consistent with Python's syntax.
+
+   ```html
+   <!-- Good -->
+   <p>Current time: <?py print datetime.now().strftime('%Y-%m-%d %H:%M:%S') ?></p>
+   
+   <!-- Avoid -->
+   <p>Current time: <?py= datetime.now().strftime('%Y-%m-%d %H:%M:%S') ?></p>
+   ```
+
+3. **JSON Metadata**: When generating JSON metadata, ensure proper escaping and formatting to avoid parsing errors.
+
 ## Dynamic Content Syntax
 
 ### Python Code Blocks
 
-Use `<?py ... ?>` to execute Python code:
+Use `<?py ... ?>` to execute Python code. For output, use `<?py print ... ?>`:
 
 ```html
-<p>Current time: <?py= datetime.now().strftime('%Y-%m-%d %H:%M:%S') ?></p>
+<p>Current time: <?py print datetime.now().strftime('%Y-%m-%d %H:%M:%S') ?></p>
 
 <ul>
 <?py

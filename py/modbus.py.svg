@@ -17,6 +17,7 @@ from datetime import datetime
 MODBUS_API = os.getenv("MODBUS_API", "http://localhost:8090")
 REFRESH = os.getenv("AUTO_REFRESH_INTERVAL", "3000")
 now = datetime.now().strftime("%H:%M:%S")
+print(MODBUS_API)
 
 # Try to get status from the Modbus API
 try:
@@ -29,32 +30,27 @@ except Exception as e:
     outputs = [False]*8
     connected = False
     error_msg = str(e)
+
+CONNECTION = 'connected' if connected else 'disconnected'
 ?>
 
     <!-- Application Metadata -->
     <script type="application/json" id="app-metadata">
-    <?py
-    metadata = {
+    {
         "api": {
-            "baseUrl": MODBUS_API,
-            "status": "connected" if connected else "disconnected"
+            "baseUrl": "{{MODBUS_API}}",
+            "status": "{{CONNECTION}}"
         },
         "ui": {
-            "refreshInterval": int(REFRESH),
-            "lastUpdated": now,
-            "error": error_msg
+            "refreshInterval": "{{REFRESH}}",
+            "lastUpdated": "{{now}}",
+            "error": "{{error_msg}}"
         },
         "version": "1.0.0",
-        "lastUpdated": now
+        "lastUpdated": "{{now}}"
     }
-    print(json.dumps(metadata, indent=4))
-    ?>
+
     </script>
-except Exception as e:
-    outputs = [False]*8
-    connected = False
-    error_msg = str(e)
-    ?>
 
     <text x="100" y="40" font-size="18" fill="black">
         API: <?py print MODBUS_API ?>
