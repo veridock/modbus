@@ -16,15 +16,31 @@ error_msg = ""
 now = datetime.now().strftime("%H:%M:%S")
 
 # Dynamic channel-specific calculations
+
 channel_name = f"DO{channel}"
 status_color = "#28a745" if state else "#6c757d"
 status_text = "ON" if state else "OFF"
-click_action = f"toggleOutput({channel})"
 
 # Load additional configuration from environment
 debug_mode = os.getenv("DEBUG", "false").lower() == "true"
 theme = os.getenv("UI_THEME", "dark")
 ?>
+
+    <!-- Metadane -->
+      <metadata>
+        <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+                 xmlns:dc="http://purl.org/dc/elements/1.1/">
+          <rdf:Description>
+            <dc:title>Modbus Output Widget</dc:title>
+            <dc:creator>Twój Zespół</dc:creator>
+            <dc:description>Interaktywny widget SVG do sterowania wyjściami cyfrowymi (DO) w systemie Modbus.</dc:description>
+            <dc:date>{{now}}</dc:date>
+            <dc:format>image/svg+xml</dc:format>
+            <dc:language>pl</dc:language>
+            <dc:rights>CC-BY 4.0</dc:rights>
+          </rdf:Description>
+        </rdf:RDF>
+      </metadata>
 
     <defs>
         <!-- Application Configuration -->
@@ -41,8 +57,8 @@ theme = os.getenv("UI_THEME", "dark")
                 "theme": "{{theme}}"
             },
             "widget": {
-                "channel": {{channel}},
-                "state": {{state|lower}},
+                "channel": "{{channel}}",
+                "state": "{{state|lower}}",
                 "name": "{{channel_name}}"
             },
             "version": "1.0.0",
@@ -56,7 +72,7 @@ theme = os.getenv("UI_THEME", "dark")
             const config = JSON.parse(document.getElementById('app-config').textContent);
             
             function toggleOutput(channel) {
-                fetch(`${config.api.baseUrl}/toggle/${channel}`, {
+                fetch(`${config.api.baseUrl}/toggle/0`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'}
                 }).then(response => {
@@ -138,7 +154,7 @@ theme = os.getenv("UI_THEME", "dark")
     <!-- Main widget rectangle -->
     <rect x="10" y="10" width="100" height="70" rx="8" 
           class="output-widget {{ 'output-active' if state else 'output-inactive' }}" 
-          onclick="{{click_action}}"/>
+          onclick="toggleOutput({{channel}})"/>
 
     <!-- Widget content -->
     <text x="60" y="35" class="text">{{channel_name}}</text>

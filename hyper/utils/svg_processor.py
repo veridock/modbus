@@ -102,8 +102,28 @@ class SVGProcessor:
             expression = match.group(1).strip()
             
             try:
+                # Handle Jinja-style conditional expressions (e.g., 'value' if condition else 'other')
+                if ' if ' in expression and ' else ' in expression:
+                    # Parse conditional expression: value_if_true if condition else value_if_false
+                    parts = expression.split(' if ', 1)
+                    if len(parts) == 2:
+                        value_if_true = parts[0].strip().strip("'\"")
+                        condition_and_else = parts[1].split(' else ', 1)
+                        if len(condition_and_else) == 2:
+                            condition_expr = condition_and_else[0].strip()
+                            value_if_false = condition_and_else[1].strip().strip("'\"")
+                            
+                            # Evaluate the condition
+                            if condition_expr in context:
+                                condition_value = bool(context[condition_expr])
+                            else:
+                                # Try to evaluate as a simple expression
+                                condition_value = bool(eval(condition_expr, {"__builtins__": {}}, context))
+                            
+                            return value_if_true if condition_value else value_if_false
+                
                 # Handle Jinja filters (e.g., variable|filter)
-                if '|' in expression:
+                elif '|' in expression:
                     var_part, filter_part = expression.split('|', 1)
                     var_name = var_part.strip()
                     filter_name = filter_part.strip()
