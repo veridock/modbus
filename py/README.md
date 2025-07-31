@@ -45,6 +45,68 @@ This is a Flask-based web application that can render dynamic content using Pyth
    ./stop.sh
    ```
 
+## Template Structure
+
+### Variable Definition and Usage
+
+1. **Python Block for Logic**:
+   - Define all variables in a Python block at the top of the file
+   - Include all necessary imports and error handling
+   - Example:
+     ```python
+     <?py
+     import requests
+     import os
+     from datetime import datetime
+     
+     # Configuration
+     MODBUS_API = os.getenv("MODBUS_API", "http://localhost:8090")
+     REFRESH = os.getenv("AUTO_REFRESH_INTERVAL", "3000")
+     now = datetime.now().strftime("%H:%M:%S")
+     
+     # Try to get status
+     try:
+         res = requests.get(f"{MODBUS_API}/status", timeout=2)
+         data = res.json()
+         connected = data.get("connected", False)
+         error_msg = None
+     except Exception as e:
+         connected = False
+         error_msg = str(e)
+     
+     # Derived variables
+     CONNECTION = 'connected' if connected else 'disconnected'
+     ?>
+     ```
+
+2. **JSON Metadata Block**:
+   - Use a `<script type="application/json">` block for configuration
+   - Reference variables using `{{VARIABLE}}` syntax
+   - Example:
+     ```xml
+     <script type="application/json" id="app-metadata">
+     {
+         "api": {
+             "baseUrl": "{{MODBUS_API}}",
+             "status": "{{CONNECTION}}"
+         },
+         "ui": {
+             "refreshInterval": {{REFRESH}},
+             "lastUpdated": "{{now}}",
+             "error": "{{error_msg or ''}}"
+         },
+         "version": "1.0.0"
+     }
+     </script>
+     ```
+
+3. **Key Points**:
+   - Always define variables before using them in templates
+   - Use uppercase for configuration variables
+   - Keep the JSON structure clean and valid
+   - Handle errors gracefully in the Python block
+   - Use `{{variable or ''}}` to provide default empty values
+
 ## Code Style Guidelines
 
 ### Variable Usage

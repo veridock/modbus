@@ -1,8 +1,10 @@
 from flask import Flask, Response, abort, send_from_directory, request, render_template_string
 import re
 import os
+import json
 from dotenv import load_dotenv
 from datetime import datetime
+from validator import validate_and_clean_content, sanitize_error_message
 
 # Load environment variables from .env file in the current directory
 load_dotenv()
@@ -44,15 +46,30 @@ def render_dynamic_svg(filename):
         with open(full_path, "r", encoding="utf-8") as f:
             svg_template = f.read()
 
-        # Sandbox: only allow specific libraries + os and datetime
-        local_vars = {
+        # Load all required environment variables with defaults
+        env_vars = {
+            # Core configuration
+            "MODBUS_API": os.getenv("MODBUS_API", "http://localhost:8090"),
+            "API_BASE_URL": os.getenv("API_BASE_URL", os.getenv("MODBUS_API", "http://localhost:8090")),
+            "AUTO_REFRESH_INTERVAL": os.getenv("AUTO_REFRESH_INTERVAL", "3000"),
+            "MODBUS_PORT": os.getenv("MODBUS_PORT", "/dev/ttyUSB0"),
+            
+            # UI Configuration
+            "REFRESH": os.getenv("REFRESH", os.getenv("AUTO_REFRESH_INTERVAL", "3000")),
+            
+            # System variables
+            "__file__": full_path,
+            "now": datetime.now().strftime("%H:%M:%S"),
+            
+            # Libraries
             "os": os,
             "datetime": datetime,
-            "__file__": full_path,
-            # Add your template variables here with default values
-            "MODBUS_PORT": os.getenv("MODBUS_PORT", "/dev/ttyUSB0"),
-            "REFRESH": int(os.getenv("REFRESH", "5000")),  # default 5 seconds
+            "json": json,
+            "requests": requests
         }
+        
+        # Update local_vars with environment variables
+        local_vars = {**os.environ, **env_vars}
 
         def eval_block(match):
             code = match.group(1).strip()
@@ -75,7 +92,25 @@ def render_dynamic_svg(filename):
         rendered_svg = re.sub(r"\{\{\s*([^}]+)\s*\}\}", 
                             lambda m: str(local_vars.get(m.group(1).strip(), m.group(0))), 
                             svg_processed)
-        return Response(rendered_svg, mimetype="image/svg+xml")
+        
+        # Validate and clean the final SVG content
+        is_valid, cleaned_svg, error = validate_and_clean_content(
+            rendered_svg, 
+            content_type='image/svg+xml'
+        )
+        
+        if not is_valid:
+            app.logger.error(f"SVG validation error: {error}")
+            # Return a minimal valid SVG with the error message
+            error_svg = f'''<svg xmlns="http://www.w3.org/2000/svg" width="400" height="100">
+                <rect width="100%" height="100%" fill="#ffebee"/>
+                <text x="10" y="30" font-family="Arial" font-size="12" fill="#b71c1c">
+                    {sanitize_error_message(error)[:100]}
+                </text>
+            </svg>'''
+            return Response(error_svg, mimetype="image/svg+xml")
+            
+        return Response(cleaned_svg, mimetype="image/svg+xml")
 
     except Exception as err:
         return Response(f"<!-- Server error: {err} -->", mimetype="image/svg+xml", status=500)

@@ -13,43 +13,102 @@ import os
 import json
 from datetime import datetime
 
-# Configuration
+# Configuration - these will be overridden by app.py's context
 MODBUS_API = os.getenv("MODBUS_API", "http://localhost:8090")
+API_BASE_URL = os.getenv("API_BASE_URL", MODBUS_API)
 REFRESH = os.getenv("AUTO_REFRESH_INTERVAL", "3000")
 now = datetime.now().strftime("%H:%M:%S")
-print(MODBUS_API)
+
+# Initialize variables
+outputs = [False] * 8
+connected = False
+error_msg = None
 
 # Try to get status from the Modbus API
 try:
     res = requests.get(f"{MODBUS_API}/status", timeout=2)
+    res.raise_for_status()
     data = res.json()
-    outputs = data.get("outputs", [False]*8)
+    outputs = data.get("outputs", [False] * 8)
     connected = data.get("connected", False)
-    error_msg = None
+except requests.exceptions.RequestException as e:
+    error_msg = f"Connection error: {str(e)}"
+except (json.JSONDecodeError, ValueError) as e:
+    error_msg = f"Invalid response: {str(e)}"
 except Exception as e:
-    outputs = [False]*8
-    connected = False
-    error_msg = str(e)
+    error_msg = f"Error: {str(e)}"
 
-CONNECTION = 'connected' if connected else 'disconnected'
+# Ensure outputs is always a list of booleans with 8 elements
+outputs = [bool(outputs[i]) if i < len(outputs) else False for i in range(8)]
+CONNECTION = 'connected' if connected and not error_msg else 'disconnected'
 ?>
 
-    <!-- Application Metadata -->
-    <script type="application/json" id="app-metadata">
-    {
+    <!-- Application Configuration -->
+    <script type="application/json" id="app-config">
+    <?py
+    # Generate safe configuration dictionary
+    config = {
         "api": {
-            "baseUrl": "{{MODBUS_API}}",
-            "status": "{{CONNECTION}}"
+            "baseUrl": API_BASE_URL,
+            "modbusApi": MODBUS_API,
+            "status": CONNECTION,
+            "endpoints": {
+                "status": f"{MODBUS_API}/status",
+                "toggle": f"{MODBUS_API}/toggle"
+            }
         },
         "ui": {
-            "refreshInterval": "{{REFRESH}}",
-            "lastUpdated": "{{now}}",
-            "error": "{{error_msg}}"
+            "refreshInterval": int(REFRESH) if str(REFRESH).isdigit() else 3000,
+            "lastUpdated": now,
+            "error": error_msg or "",
+            "outputs": outputs
         },
-        "version": "1.0.0",
-        "lastUpdated": "{{now}}"
+        "version": "1.0.0"
     }
-
+    
+    # Output as JSON with proper escaping
+    print(json.dumps(config, ensure_ascii=False, default=str))
+    ?>
+    </script>
+    
+    <!-- Initialize JavaScript -->
+    <script>
+    // Parse the configuration
+    const config = JSON.parse(document.getElementById('app-config').textContent);
+    
+    // Make API_BASE_URL available globally for legacy code
+    const API_BASE_URL = config.api.baseUrl;
+    
+    // Function to toggle output
+    function toggleOutput(index) {
+        if (index < 0 || index >= 8) return;
+        
+        fetch(`${config.api.endpoints.toggle}/${index}`, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Update the UI to reflect the new state
+                const button = document.querySelector(`#output-${index}`);
+                if (button) {
+                    button.classList.toggle('active');
+                }
+            } else {
+                console.error('Failed to toggle output:', data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error toggling output:', error);
+        });
+    }
+    
+    // Auto-refresh the page
+    if (config.ui.refreshInterval > 0) {
+        setTimeout(() => {
+            window.location.reload();
+        }, config.ui.refreshInterval);
+    }
     </script>
 
     <text x="100" y="40" font-size="18" fill="black">
@@ -443,7 +502,7 @@ CONNECTION = 'connected' if connected else 'disconnected'
             btn.disabled = true;
             btn.classList.add('loading');
 
-            fetch(API_BASE_URL + '/control', {
+            fetch(config.apibaseUrl + '/control', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ channel: channel, action: 'toggle' })
