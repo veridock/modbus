@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">
+    <defs>
+        <style>
+            .button { 
+                cursor: pointer; 
+                transition: all 0.3s;
+            }
+            .button:hover { 
+                transform: scale(1.05); 
+            }
+            .button:active { 
+                transform: scale(0.95); 
+            }
+            .on { fill: #4CAF50; }
+            .off { fill: #f44336; }
+            .text { 
+                fill: white; 
+                font-family: Arial; 
+                font-size: 24px; 
+                font-weight: bold; 
+                text-anchor: middle; 
+                pointer-events: none;
+            }
+            .label {
+                fill: #666;
+                font-family: Arial;
+                font-size: 12px;
+                text-anchor: middle;
+            }
+        </style>
+        <script>
+            function toggle() {
+                // Submit form to toggle
+                window.location.href = '/action/toggle/{{ channel }}';
+            }
+        </script>
+    </defs>
+
+    <rect x="10" y="10" width="80" height="60" rx="10" 
+          class="button {{ 'on' if state else 'off' }}" 
+          onclick="toggle()"/>
+
+    <text x="50" y="45" class="text">DO{{ channel }}</text>
+    <text x="50" y="85" class="label">{{ 'ON' if state else 'OFF' }}</text>
+</svg>

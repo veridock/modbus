@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Switch Widget Demo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .widget-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        .widget {
+            background: white;
+            padding: 10px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        iframe {
+            border: none;
+            display: block;
+        }
+        h2 {
+            color: #666;
+            margin-top: 30px;
+        }
+        .code-example {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Modular Widget Examples</h1>
+    
+    <h2>1. Simple Toggle Switches</h2>
+    <div class="widget-container">
+        <div class="widget">
+            <h3>Output 0</h3>
+            <iframe src="/widget/switch/0" width="200" height="80"></iframe>
+        </div>
+        <div class="widget">
+            <h3>Output 1</h3>
+            <iframe src="/widget/switch/1" width="200" height="80"></iframe>
+        </div>
+    </div>
+    
+    <h2>2. LED Indicators</h2>
+    <div class="widget-container">
+        {% for i in range(8) %}
+        <div class="widget">
+            <h3>Input {{ i }}</h3>
+            <iframe src="/module/led/{{ i }}" width="50" height="50"></iframe>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <h2>3. Analog Gauges</h2>
+    <div class="widget-container">
+        <div class="widget">
+            <h3>Register 0</h3>
+            <iframe src="/widget/gauge/0" width="150" height="150"></iframe>
+        </div>
+        <div class="widget">
+            <h3>Register 1</h3>
+            <iframe src="/widget/gauge/1" width="150" height="150"></iframe>
+        </div>
+    </div>
+    
+    <h2>4. Command Buttons</h2>
+    <div class="widget-container">
+        <div class="widget">
+            <h3>All ON</h3>
+            <iframe src="/widget/command/all_on" width="100" height="50"></iframe>
+        </div>
+        <div class="widget">
+            <h3>All OFF</h3>
+            <iframe src="/widget/command/all_off" width="100" height="50"></iframe>
+        </div>
+    </div>
+    
+    <h2>5. Embed in Your HTML</h2>
+    <p>You can embed any widget in your HTML using iframe:</p>
+    <div class="code-example">
+        &lt;iframe src="http://localhost:5001/module/output/0" width="100" height="100"&gt;&lt;/iframe&gt;
+    </div>
+    
+    <h2>6. Direct SVG Links</h2>
+    <p>Or use as image source:</p>
+    <div class="code-example">
+        &lt;img src="http://localhost:5001/module/led/0" width="50" height="50"&gt;
+    </div>
+    
+    <h2>7. Auto-refresh Example</h2>
+    <div class="widget">
+        <h3>Auto-updating Input Status</h3>
+        <div id="auto-refresh-widget"></div>
+    </div>
+    
+    <script>
+        // Auto-refresh widget example
+        function refreshWidget() {
+            const widget = document.getElementById('auto-refresh-widget');
+            widget.innerHTML = '<img src="/module/led/0?t=' + Date.now() + '" width="50" height="50">';
+        }
+        
+        refreshWidget();
+        setInterval(refreshWidget, 1000);
+    </script>
+</body>
+</html>

@@ -4,9 +4,17 @@ System modularnych widgetów SVG do kontroli urządzeń Modbus RTU.
 
 ## 🚀 Szybki start
 
+### Główna aplikacja:
 ```bash
 chmod +x start.sh
 ./start.sh
+```
+
+### Moduł wyjściowy (standalone):
+```bash
+# Uruchom moduł dla kanału 1 na porcie 5002
+chmod +x output_module.py
+./output_module.py 1 --port 5002
 ```
 
 ## 📋 Koncepcja
@@ -20,10 +28,28 @@ Każdy element UI (przycisk, wskaźnik, przełącznik) to **osobny moduł SVG**,
 ## 🔧 Dostępne moduły
 
 ### 1. **Output Button** (`/module/output/<channel>`)
-Prosty przycisk do przełączania wyjść cyfrowych.
+Prosty przycisk do przełączania wyjść cyfrowych. Dostępny jako:
+- Endpoint w głównej aplikacji: `/module/output/<channel>`
+- Samodzielny moduł: `./output_module.py <channel>`
+
+Przykład użycia:
 ```html
-<iframe src="/module/output/0" width="100" height="100"></iframe>
+<iframe src="http://localhost:5002/module/output/0" width="100" height="100"></iframe>
 ```
+
+Uruchomienie samodzielnego modułu:
+```bash
+# Uruchomienie dla kanału 0 na domyślnym porcie 5001
+./output_module.py 0
+
+# Z niestandardowym portem i hostem
+./output_module.py 0 --port 8080 --host 0.0.0.0
+```
+
+Dostępne parametry:
+- `channel` - numer kanału (wymagany, 0-7)
+- `--port` - port serwera (domyślnie: 5001)
+- `--host` - adres hosta (domyślnie: 0.0.0.0)
 
 ### 2. **Switch Widget** (`/widget/switch/<channel>`)
 Przełącznik w stylu iOS.
