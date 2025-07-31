@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xhtml="http://www.w3.org/1999/xhtml"
+     width="100%" height="100%" viewBox="0 0 800 600">
+    
+    <title>Modbus Control Panel</title>
+    
+    <defs>
+        <style>
+            .button {
+                cursor: pointer;
+                transition: all 0.3s;
+            }
+            .button:hover {
+                transform: scale(1.05);
+            }
+            .button:active {
+                transform: scale(0.95);
+            }
+            .on { fill: #4CAF50; }
+            .off { fill: #f44336; }
+            .input-on { fill: #2196F3; }
+            .input-off { fill: #9E9E9E; }
+            .text-white { fill: white; font-family: Arial; font-weight: bold; }
+            .status-text { fill: #666; font-family: Arial; font-size: 14px; }
+        </style>
+    </defs>
+    
+    <!-- Background -->
+    <rect width="100%" height="100%" fill="#f5f5f5"/>
+    
+    <!-- Title -->
+    <text x="400" y="40" text-anchor="middle" font-size="30" fill="#333" font-family="Arial">
+        Modbus RTU Control Panel
+    </text>
+    
+    <!-- Connection Status -->
+    <g id="status-group" transform="translate(50, 70)">
+        <rect width="700" height="40" fill="white" stroke="#ddd" rx="5"/>
+        <text x="20" y="25" class="status-text">
+            Status: <tspan id="connection-status" font-weight="bold">Checking...</tspan>
+        </text>
+        <text x="680" y="25" text-anchor="end" class="status-text">
+            <tspan id="timestamp">--:--:--</tspan>
+        </text>
+    </g>
+    
+    <!-- Digital Outputs -->
+    <g transform="translate(50, 140)">
+        <text font-size="20" fill="#666" font-family="Arial">Digital Outputs (Click to Toggle)</text>
+        <g id="outputs-group" transform="translate(0, 30)">
+            <!-- Output buttons will be generated here -->
+        </g>
+    </g>
+    
+    <!-- Digital Inputs -->
+    <g transform="translate(50, 300)">
+        <text font-size="20" fill="#666" font-family="Arial">Digital Inputs (Read Only)</text>
+        <g id="inputs-group" transform="translate(0, 30)">
+            <!-- Input indicators will be generated here -->
+        </g>
+    </g>
+    
+    <!-- Error Message -->
+    <text id="error-message" x="400" y="500" text-anchor="middle" fill="#f44336" 
+          font-family="Arial" font-size="16" style="display: none"></text>
+    
+    <script type="text/javascript"><![CDATA[
+        const API_BASE = '/api';
+        let updateTimer = null;
+        
+        function createOutputButton(index, state) {
+            const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            g.setAttribute('transform', `translate(${index * 85}, 0)`);
+            g.setAttribute('class', 'button');
+            g.onclick = () => toggleOutput(index);
+            
+            const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            rect.setAttribute('width', '75');
+            rect.setAttribute('height', '75');
+            rect.setAttribute('rx', '10');
+            rect.setAttribute('class', state ? 'on' : 'off');
+            rect.setAttribute('id', `output-${index}`);
+            
+            const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            text.setAttribute('x', '37.5');
+            text.setAttribute('y', '45');
+            text.setAttribute('text-anchor', 'middle');
+            text.setAttribute('class', 'text-white');
+            text.textContent = `DO${index}`;
+            
+            g.appendChild(rect);
+            g.appendChild(text);
+            return g;
+        }
+        
+        function createInputIndicator(index, state) {
+            const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            g.setAttribute('transform', `translate(${index * 85}, 0)`);
+            
+            const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            rect.setAttribute('width', '75');
+            rect.setAttribute('height', '75');
+            rect.setAttribute('rx', '10');
+            rect.setAttribute('class', state ? 'input-on' : 'input-off');
+            rect.setAttribute('id', `input-${index}`);
+            
+            const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            text.setAttribute('x', '37.5');
+            text.setAttribute('y', '45');
+            text.setAttribute('text-anchor', 'middle');
+            text.setAttribute('class', 'text-white');
+            text.textContent = `DI${index}`;
+            
+            g.appendChild(rect);
+            g.appendChild(text);
+            return g;
+        }
+        
+        function updateUI(data) {
+            // Update connection status
+            const statusEl = document.getElementById('connection-status');
+            statusEl.textContent = data.connected ? 'Connected' : 'Disconnected';
+            statusEl.setAttribute('fill', data.connected ? '#4CAF50' : '#f44336');
+            
+            // Update timestamp
+            document.getElementById('timestamp').textContent = 
+                new Date().toLocaleTimeString();
+            
+            // Update outputs
+            const outputsGroup = document.getElementById('outputs-group');
+            outputsGroup.innerHTML = '';
+            data.outputs.forEach((state, i) => {
+                outputsGroup.appendChild(createOutputButton(i, state));
+            });
+            
+            // Update inputs
+            const inputsGroup = document.getElementById('inputs-group');
+            inputsGroup.innerHTML = '';
+            data.inputs.forEach((state, i) => {
+                inputsGroup.appendChild(createInputIndicator(i, state));
+            });
+            
+            // Show/hide error
+            const errorEl = document.getElementById('error-message');
+            if (data.error) {
+                errorEl.textContent = `Error: ${data.error}`;
+                errorEl.style.display = 'block';
+            } else {
+                errorEl.style.display = 'none';
+            }
+        }
+        
+        function fetchStatus() {
+            fetch(API_BASE + '/status')
+                .then(response => response.json())
+                .then(data => updateUI(data))
+                .catch(error => {
+                    console.error('Fetch error:', error);
+                    updateUI({
+                        connected: false,
+                        outputs: new Array(8).fill(false),
+                        inputs: new Array(8).fill(false),
+                        error: error.message
+                    });
+                });
+        }
+        
+        function toggleOutput(channel) {
+            // Disable updates during toggle
+            if (updateTimer) {
+                clearInterval(updateTimer);
+            }
+            
+            fetch(API_BASE + `/toggle/${channel}`, { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Update immediately
+                        fetchStatus();
+                    } else {
+                        alert(`Failed to toggle output ${channel}: ${data.error}`);
+                    }
+                })
+                .catch(error => {
+                    alert(`Error: ${error.message}`);
+                })
+                .finally(() => {
+                    // Resume updates
+                    updateTimer = setInterval(fetchStatus, 1000);
+                });
+        }
+        
+        // Start updates
+        fetchStatus();
+        updateTimer = setInterval(fetchStatus, 1000);
+    ]]></script>
+</svg>
