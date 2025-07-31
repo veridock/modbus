@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modbus RTU Control Panel</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .status-bar {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .status-connected {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+        
+        .status-disconnected {
+            color: #f44336;
+            font-weight: bold;
+        }
+        
+        .section {
+            margin-bottom: 30px;
+        }
+        
+        .section h2 {
+            color: #666;
+            margin-bottom: 15px;
+        }
+        
+        .button-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 15px;
+        }
+        
+        .io-button {
+            height: 100px;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .io-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        
+        .io-button:active {
+            transform: scale(0.95);
+        }
+        
+        .io-button.output {
+            background: #f44336;
+        }
+        
+        .io-button.output.on {
+            background: #4CAF50;
+        }
+        
+        .io-button.input {
+            background: #9E9E9E;
+            cursor: default;
+        }
+        
+        .io-button.input:hover {
+            transform: none;
+        }
+        
+        .io-button.input.on {
+            background: #2196F3;
+        }
+        
+        .io-button.loading {
+            opacity: 0.6;
+            cursor: wait;
+        }
+        
+        .io-button.loading::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            animation: loading 1s infinite;
+        }
+        
+        @keyframes loading {
+            100% { left: 100%; }
+        }
+        
+        .error-message {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .error-message.show {
+            display: block;
+        }
+        
+        @media (max-width: 600px) {
+            .button-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Modbus RTU Control Panel</h1>
+        
+        <div class="status-bar">
+            <div>
+                <strong>Status:</strong> 
+                <span id="connection-status" class="status-disconnected">Disconnected</span>
+            </div>
+            <div>
+                <strong>Last Update:</strong> 
+                <span id="timestamp">--:--:--</span>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>Digital Outputs (Click to Toggle)</h2>
+            <div class="button-grid" id="outputs-grid">
+                <!-- Output buttons will be generated here -->
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>Digital Inputs (Read Only)</h2>
+            <div class="button-grid" id="inputs-grid">
+                <!-- Input indicators will be generated here -->
+            </div>
+        </div>
+        
+        <div id="error-message" class="error-message"></div>
+    </div>
+    
+    <script>
+        const API_BASE = '/api';
+        let updateTimer = null;
+        let isUpdating = false;
+        
+        function createOutputButton(index, state) {
+            const button = document.createElement('button');
+            button.className = `io-button output ${state ? 'on' : 'off'}`;
+            button.id = `output-${index}`;
+            button.textContent = `DO${index}`;
+            button.onclick = () => toggleOutput(index);
+            return button;
+        }
+        
+        function createInputIndicator(index, state) {
+            const button = document.createElement('button');
+            button.className = `io-button input ${state ? 'on' : 'off'}`;
+            button.id = `input-${index}`;
+            button.textContent = `DI${index}`;
+            button.disabled = true;
+            return button;
+        }
+        
+        function showError(message) {
+            const errorEl = document.getElementById('error-message');
+            errorEl.textContent = message;
+            errorEl.classList.add('show');
+            setTimeout(() => errorEl.classList.remove('show'), 5000);
+        }
+        
+        function updateUI(data) {
+            // Update connection status
+            const statusEl = document.getElementById('connection-status');
+            statusEl.textContent = data.connected ? 'Connected' : 'Disconnected';
+            statusEl.className = data.connected ? 'status-connected' : 'status-disconnected';
+            
+            // Update timestamp
+            document.getElementById('timestamp').textContent = new Date().toLocaleTimeString();
+            
+            // Update outputs
+            const outputsGrid = document.getElementById('outputs-grid');
+            if (outputsGrid.children.length === 0) {
+                // First time - create buttons
+                for (let i = 0; i < 8; i++) {
+                    outputsGrid.appendChild(createOutputButton(i, data.outputs[i]));
+                }
+            } else {
+                // Update existing buttons
+                data.outputs.forEach((state, i) => {
+                    const button = document.getElementById(`output-${i}`);
+                    if (button) {
+                        button.className = `io-button output ${state ? 'on' : 'off'}`;
+                    }
+                });
+            }
+            
+            // Update inputs
+            const inputsGrid = document.getElementById('inputs-grid');
+            if (inputsGrid.children.length === 0) {
+                // First time - create indicators
+                for (let i = 0; i < 8; i++) {
+                    inputsGrid.appendChild(createInputIndicator(i, data.inputs[i]));
+                }
+            } else {
+                // Update existing indicators
+                data.inputs.forEach((state, i) => {
+                    const button = document.getElementById(`input-${i}`);
+                    if (button) {
+                        button.className = `io-button input ${state ? 'on' : 'off'}`;
+                    }
+                });
+            }
+            
+            // Show error if any
+            if (data.error) {
+                showError(data.error);
+            }
+        }
+        
+        function fetchStatus() {
+            if (isUpdating) return;
+            
+            isUpdating = true;
+            fetch(API_BASE + '/status')
+                .then(response => response.json())
+                .then(data => {
+                    updateUI(data);
+                    isUpdating = false;
+                })
+                .catch(error => {
+                    console.error('Fetch error:', error);
+                    updateUI({
+                        connected: false,
+                        outputs: new Array(8).fill(false),
+                        inputs: new Array(8).fill(false),
+                        error: error.message
+                    });
+                    isUpdating = false;
+                });
+        }
+        
+        function toggleOutput(channel) {
+            const button = document.getElementById(`output-${channel}`);
+            button.classList.add('loading');
+            
+            // Stop updates during toggle
+            if (updateTimer) {
+                clearInterval(updateTimer);
+            }
+            
+            fetch(API_BASE + `/toggle/${channel}`, { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.success) {
+                        showError(`Failed to toggle output ${channel}: ${data.error}`);
+                    }
+                    // Force immediate update
+                    fetchStatus();
+                })
+                .catch(error => {
+                    showError(`Error: ${error.message}`);
+                })
+                .finally(() => {
+                    button.classList.remove('loading');
+                    // Resume updates
+                    updateTimer = setInterval(fetchStatus, 1000);
+                });
+        }
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchStatus();
+            updateTimer = setInterval(fetchStatus, 1000);
+        });
+        
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (updateTimer) {
+                clearInterval(updateTimer);
+            }
+        });
+    </script>
+</body>
+</html>
