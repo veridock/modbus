@@ -52,12 +52,34 @@ def execute_mod_command(command_args):
     except Exception as e:
         return {'success': False, 'error': str(e)}
 
-def parse_coil_output(output):
-    """Parse coil read output to get boolean state"""
-    if '[True]' in output:
-        return True
-    elif '[False]' in output:
-        return False
+def parse_coil_output(output, channel):
+    """Parse coil read output to get boolean state for a specific channel
+    
+    Args:
+        output: Raw output from mod.py (e.g., 'Coils [0-7]: [False, False, False, False, False, False, False, False]')
+        channel: The channel number (0-7) to get the state for
+    
+    Returns:
+        bool: The state of the specified channel, or None if parsing fails
+    """
+    try:
+        # Extract the list of coil states from the output
+        start = output.find('[') + 1
+        end = output.rfind(']')
+        if start > 0 and end > start:
+            # Get the list of states as a string, remove whitespace, and split by commas
+            states_str = output[start:end].strip()
+            # Handle both '[True, False]' and 'True, False' formats
+            if states_str.startswith('[') and states_str.endswith(']'):
+                states_str = states_str[1:-1]
+            states = [s.strip().lower() == 'true' for s in states_str.split(',')]
+            
+            # Return the state of the requested channel if it exists
+            if 0 <= channel < len(states):
+                return states[channel]
+    except (ValueError, IndexError, AttributeError) as e:
+        print(f"Error parsing coil output: {e}")
+    
     return None
 
 def generate_svg(channel, state):
@@ -109,15 +131,20 @@ def generate_svg(channel, state):
     <text x="50" y="85" class="label">{'ON' if state else 'OFF'}</text>
 </svg>'''
 
-@app.route('/action/toggle/<int:channel>')
+@app.route('/module/output/<int:channel>')
 def output_module(channel):
     """Endpoint for the output module SVG"""
-    # Read current state
-    result = execute_mod_command(['rc', str(channel), '1', str(MODBUS_UNIT)])
-    print(result)
+    # Read all coil states (8 coils at once for efficiency)
+    result = execute_mod_command(['rc', '0', '8', str(MODBUS_UNIT)])
     state = False
+    
     if result['success']:
-        state = parse_coil_output(result['output'])
+        # Parse the output to get the state of the specific channel
+        state = parse_coil_output(result['output'], channel)
+        if state is None:
+            print(f"Warning: Could not parse state for channel {channel} from output: {result['output']}")
+    else:
+        print(f"Error reading coil states: {result.get('error', 'Unknown error')}")
     
     # Generate and return SVG
     svg = generate_svg(channel, state)
