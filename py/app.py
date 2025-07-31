@@ -1,9 +1,10 @@
-from flask import Flask, Response, abort, send_from_directory, request
+from flask import Flask, Response, abort, send_from_directory, request, render_template_string
 import re
 import os
 from dotenv import load_dotenv
 from datetime import datetime
 
+# Load environment variables from .env file in the current directory
 load_dotenv()
 
 app = Flask(__name__, static_folder="static")
@@ -80,134 +81,72 @@ def render_dynamic_svg(filename):
         return Response(f"<!-- Server error: {err} -->", mimetype="image/svg+xml", status=500)
 
 
+def render_py_file(file_path, mimetype):
+    """Render a .py.* file with Python code evaluation"""
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        # Create a context with environment variables and other useful stuff
+        context = {
+            'os': os,
+            'datetime': datetime,
+            'request': request,
+            'env': dict(os.environ)  # Make all environment variables available
+        }
+        
+        # Add all environment variables to context directly for easier access
+        for key, value in os.environ.items():
+            context[key] = value
+
+        def eval_code_block(match):
+            code = match.group(1).strip()
+            try:
+                if code.startswith("="):
+                    # Expression evaluation (e.g., <?py= 1+1 ?>
+                    return str(eval(code[1:].strip(), {}, context))
+                else:
+                    # Code execution (e.g., <?py x = 42 ?>
+                    exec(code, {}, context)
+                    return ''
+            except Exception as e:
+                return f"<!-- Python error: {e} -->"
+
+        # Process Python code blocks
+        content = re.sub(r'<\?py([\s\S]*?)\?>', eval_code_block, content)
+        
+        # Process template variables {{ VARIABLE }}
+        content = re.sub(
+            r'\{\{\s*([^}]+)\s*\}\}',
+            lambda m: str(context.get(m.group(1).strip(), m.group(0))),
+            content
+        )
+        
+        return Response(content, mimetype=mimetype)
+
+    except Exception as e:
+        error_msg = f"<!-- Server error: {e} -->"
+        if mimetype.startswith('image/svg'):
+            error_msg = f'<svg><text x="10" y="20">{error_msg}</text></svg>'
+        return Response(error_msg, mimetype=mimetype, status=500)
+
 @app.route('/')
 def index():
-    """List all .py.svg files in the current directory with preview"""
-    import glob
-    from pathlib import Path
+    """Serve the main index page"""
+    return render_py_file('index.py.html', 'text/html')
 
-    # Get all .py.svg files in the current directory
-    svg_files = [f for f in glob.glob('*.py.svg') if Path(f).is_file()]
-
-    # Generate HTML with grid layout
-    html = """
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>SVG Files Preview</title>
-        <style>
-            body { 
-                font-family: Arial, sans-serif; 
-                margin: 20px;
-                background-color: #f5f5f5;
-            }
-            h1 { 
-                color: #333; 
-                text-align: center;
-                margin-bottom: 30px;
-            }
-            .container { 
-                max-width: 1400px; 
-                margin: 0 auto;
-                padding: 0 15px;
-            }
-            .grid {
-                display: grid;
-                grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-                gap: 20px;
-                padding: 20px 0;
-            }
-            .svg-card {
-                background: white;
-                border-radius: 8px;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-                overflow: hidden;
-                transition: transform 0.2s;
-            }
-            .svg-card:hover {
-                transform: translateY(-5px);
-                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            }
-            .svg-preview {
-                width: 100%;
-                height: 200px;
-                object-fit: contain;
-                background: #f8f9fa;
-                border-bottom: 1px solid #eee;
-            }
-            .svg-info {
-                padding: 15px;
-            }
-            .svg-name {
-                font-weight: bold;
-                margin: 0 0 5px 0;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-            }
-            .svg-link {
-                color: #0066cc;
-                text-decoration: none;
-                font-size: 14px;
-            }
-            .svg-link:hover {
-                text-decoration: underline;
-            }
-            .no-files {
-                text-align: center;
-                color: #666;
-                padding: 40px 20px;
-                grid-column: 1 / -1;
-            }
-            .header {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                margin-bottom: 20px;
-                flex-wrap: wrap;
-                gap: 15px;
-            }
-            .refresh-btn {
-                background: #4CAF50;
-                color: white;
-                border: none;
-                padding: 8px 16px;
-                border-radius: 4px;
-                cursor: pointer;
-                font-size: 14px;
-                text-decoration: none;
-                display: inline-block;
-            }
-            .refresh-btn:hover {
-                background: #45a049;
-            }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="header">
-                <h1>SVG Files Preview</h1>
-                <a href="/" class="refresh-btn">⟳ Refresh List</a>
-            </div>
-            <div class="grid">
-    """
-
-    if not svg_files:
-        html += '<div class="no-files">No .py.svg files found in the current directory.</div>'
-    else:
-        for file in sorted(svg_files):
-            file_url = f"/{file}"
-            file_name = Path(file).name
-            html += f"""
-                <div class="svg-card">
-                    <img src="{file_url}" alt="{file_name}" class="svg-preview" 
-                         onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'><text x=\'50%\' y=\'50%\' text-anchor=\'middle\' dominant-baseline=\'middle\' font-family=\'Arial\' font-size=\'10\' fill=\'#999\'>Preview not available</text></svg>'">
-                    <div class="svg-info">
-                        <div class="svg-name" title="{file_name}">{file_name}</div>
-                        <a href="{file_url}" class="svg-link" target="_blank">Open in new tab</a>
-                    </div>
-                </div>
-            """
+@app.route('/<path:filename>')
+def render_file(filename):
+    """Handle .py.svg and .py.html files with dynamic content"""
+    if not (filename.endswith('.py.svg') or filename.endswith('.py.html')):
+        return abort(404)
+    
+    full_path = os.path.abspath(filename)
+    if not os.path.isfile(full_path):
+        return abort(404)
+    
+    mimetype = 'image/svg+xml' if filename.endswith('.svg') else 'text/html'
+    return render_py_file(full_path, mimetype)
 
     html += """
             </div>
