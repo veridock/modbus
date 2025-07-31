@@ -8,7 +8,8 @@ import json
 from datetime import datetime
 
 # Configuration - these will be overridden by app.py's context
-MODBUS_API = os.getenv("MODBUS_API", "http://localhost:5002")
+# Try to load modbusapi configuration from .env file
+MODBUS_API = os.getenv("MODBUSAPI_URL", "http://localhost:5000")
 API_BASE_URL = os.getenv("API_BASE_URL", MODBUS_API)
 REFRESH = os.getenv("AUTO_REFRESH_INTERVAL", "3000")
 CONNECTION = "active"
@@ -16,7 +17,6 @@ error_msg = ""
 now = datetime.now().strftime("%H:%M:%S")
 
 # Dynamic channel-specific calculations
-
 channel_name = f"DO{channel}"
 status_color = "#28a745" if state else "#6c757d"
 status_text = "ON" if state else "OFF"
@@ -32,7 +32,7 @@ theme = os.getenv("UI_THEME", "dark")
                  xmlns:dc="http://purl.org/dc/elements/1.1/">
           <rdf:Description>
             <dc:title>Modbus Output Widget</dc:title>
-            <dc:creator>Twój Zespół</dc:creator>
+            <dc:creator>Tom Sapletta</dc:creator>
             <dc:description>Interaktywny widget SVG do sterowania wyjściami cyfrowymi (DO) w systemie Modbus.</dc:description>
             <dc:date>{{now}}</dc:date>
             <dc:format>image/svg+xml</dc:format>
@@ -72,15 +72,20 @@ theme = os.getenv("UI_THEME", "dark")
             const config = JSON.parse(document.getElementById('app-config').textContent);
             
             function toggleOutput(channel) {
-                fetch(`${config.api.baseUrl}/toggle/0`, {
+                // Use modbusapi REST API endpoint
+                fetch(`${config.api.baseUrl}/api/toggle/${channel}`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'}
                 }).then(response => {
                     if (response.ok) {
-                        setTimeout(() => window.location.reload(), 500);
+                        return response.json();
                     } else {
                         console.error('Toggle failed:', response.statusText);
+                        throw new Error('Toggle failed');
                     }
+                }).then(data => {
+                    console.log('Toggle success:', data);
+                    setTimeout(() => window.location.reload(), 500);
                 }).catch(error => {
                     console.error('Toggle error:', error);
                 });
