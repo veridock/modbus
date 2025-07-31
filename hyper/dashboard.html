@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Custom Modbus Dashboard</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #1e1e1e;
+            color: #fff;
+        }
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            padding: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .panel {
+            background: #2d2d2d;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        .panel h2 {
+            margin: 0 0 20px 0;
+            color: #4CAF50;
+            font-size: 18px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        iframe {
+            border: none;
+            background: transparent;
+        }
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+        .single-control {
+            background: #3d3d3d;
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .single-control h3 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            color: #aaa;
+        }
+        .status-bar {
+            background: #3d3d3d;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #4CAF50;
+        }
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+        .indicators-row {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .indicator-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .command-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+            .controls-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="status-bar">
+        <div class="logo">⚡ MODBUS CONTROL CENTER</div>
+        <div>
+            <iframe src="/widget/status" width="300" height="100" style="vertical-align: middle;"></iframe>
+        </div>
+    </div>
+
+    <div class="dashboard">
+        <!-- Main Controls Panel -->
+        <div class="panel" style="grid-column: span 2;">
+            <h2>🎛️ Output Controls</h2>
+            <div class="controls-grid">
+                <div class="single-control">
+                    <h3>Motor 1</h3>
+                    <iframe src="/widget/switch/0" width="200" height="80"></iframe>
+                </div>
+                <div class="single-control">
+                    <h3>Motor 2</h3>
+                    <iframe src="/widget/switch/1" width="200" height="80"></iframe>
+                </div>
+                <div class="single-control">
+                    <h3>Pump</h3>
+                    <iframe src="/widget/switch/2" width="200" height="80"></iframe>
+                </div>
+                <div class="single-control">
+                    <h3>Valve</h3>
+                    <iframe src="/widget/switch/3" width="200" height="80"></iframe>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions Panel -->
+        <div class="panel">
+            <h2>⚡ Quick Actions</h2>
+            <div class="command-buttons">
+                <iframe src="/widget/command/all_on" width="100" height="50"></iframe>
+                <iframe src="/widget/command/all_off" width="100" height="50"></iframe>
+                <iframe src="/widget/command/read_all" width="100" height="50"></iframe>
+            </div>
+        </div>
+
+        <!-- Input Status Panel -->
+        <div class="panel">
+            <h2>📊 Input Status</h2>
+            <div class="indicators-row">
+                <div class="indicator-group">
+                    <span>Sensor 1:</span>
+                    <iframe src="/module/led/0" width="50" height="50"></iframe>
+                </div>
+                <div class="indicator-group">
+                    <span>Sensor 2:</span>
+                    <iframe src="/module/led/1" width="50" height="50"></iframe>
+                </div>
+                <div class="indicator-group">
+                    <span>Sensor 3:</span>
+                    <iframe src="/module/led/2" width="50" height="50"></iframe>
+                </div>
+                <div class="indicator-group">
+                    <span>Sensor 4:</span>
+                    <iframe src="/module/led/3" width="50" height="50"></iframe>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analog Values Panel -->
+        <div class="panel">
+            <h2>📈 Analog Readings</h2>
+            <div style="display: flex; gap: 20px; justify-content: center;">
+                <iframe src="/widget/gauge/0" width="150" height="150"></iframe>
+                <iframe src="/widget/gauge/1" width="150" height="150"></iframe>
+            </div>
+        </div>
+
+        <!-- Register Control Panel -->
+        <div class="panel">
+            <h2>🔧 Register Control</h2>
+            <iframe src="/widget/register/0" width="250" height="120"></iframe>
+            <iframe src="/widget/register/1" width="250" height="120" style="margin-top: 10px;"></iframe>
+        </div>
+
+        <!-- Remaining Outputs -->
+        <div class="panel">
+            <h2>🔌 Additional Outputs</h2>
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+                <iframe src="/module/button/4" width="100" height="100"></iframe>
+                <iframe src="/module/button/5" width="100" height="100"></iframe>
+                <iframe src="/module/button/6" width="100" height="100"></iframe>
+                <iframe src="/module/button/7" width="100" height="100"></iframe>
+            </div>
+        </div>
+
+        <!-- Remaining Inputs -->
+        <div class="panel">
+            <h2>📥 Additional Inputs</h2>
+            <div style="display: flex; gap: 15px; flex-wrap: wrap; justify-content: center;">
+                <iframe src="/module/led/4" width="50" height="50"></iframe>
+                <iframe src="/module/led/5" width="50" height="50"></iframe>
+                <iframe src="/module/led/6" width="50" height="50"></iframe>
+                <iframe src="/module/led/7" width="50" height="50"></iframe>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Auto-refresh specific widgets
+        function refreshWidget(id, url, interval) {
+            setInterval(() => {
+                const iframe = document.querySelector(`iframe[src^="${url}"]`);
+                if (iframe) {
+                    iframe.src = url + '?t=' + Date.now();
+                }
+            }, interval);
+        }
+
+        // Refresh status widget every 2 seconds
+        refreshWidget('status', '/widget/status', 2000);
+        
+        // Refresh LED indicators every 1 second
+        for (let i = 0; i < 8; i++) {
+            refreshWidget(`led-${i}`, `/module/led/${i}`, 1000);
+        }
+        
+        // Refresh gauges every 3 seconds
+        refreshWidget('gauge-0', '/widget/gauge/0', 3000);
+        refreshWidget('gauge-1', '/widget/gauge/1', 3000);
+    </script>
+</body>
+</html>

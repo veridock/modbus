@@ -1,144 +1,82 @@
 #!/bin/bash
 
-# Activate virtual environment
-if [ -d "venv" ]; then
-    echo "Activating virtual environment..."
-    source venv/bin/activate
-else
-    echo "Creating and activating virtual environment..."
-    python3 -m venv venv
-    source venv/bin/activate
-    
-    echo "Installing required packages..."
-    pip install --upgrade pip
-    pip install flask flask-cors pymodbus[serial] python-dotenv
-fi
-
-echo "Starting Simple Modbus Control Panel..."
-
-# Check if Python is installed
-if ! command -v python &> /dev/null; then
-    echo "Python 3 is required but not installed!"
-    exit 1
-fi
-
-# Install minimal requirements if needed
-if ! python -c "import flask" 2>/dev/null; then
-    echo "Installing required packages..."
-    pip install flask flask-cors pymodbus[serial] python-dotenv
-fi
+echo "🚀 Starting Modular Modbus Control System..."
+echo "=========================================="
 
 # Check if mod.py exists
 if [ ! -f "mod.py" ]; then
-    echo "Error: mod.py not found!"
+    echo "❌ Error: mod.py not found!"
+    echo "Please make sure mod.py is in the same directory."
     exit 1
 fi
 
-# Create .env file if it doesn't exist
+# Check Python
+if ! command -v python3 &> /dev/null; then
+    echo "❌ Error: Python 3 is required!"
+    exit 1
+fi
+
+# Create templates directory if it doesn't exist
+mkdir -p templates
+
+# Copy HTML files if they exist
+if [ -f "widget.html" ]; then
+    cp widget.html templates/
+fi
+
+if [ -f "dashboard.html" ]; then
+    cp dashboard.html templates/
+fi
+
+# Check/create .env file
 if [ ! -f ".env" ]; then
-    echo "Creating default .env file..."
+    echo "📝 Creating .env file with default settings..."
     cat > .env << EOF
 # Modbus Configuration
 MODBUS_PORT=/dev/ttyUSB0
 MODBUS_BAUDRATE=9600
 MODBUS_TIMEOUT=1.0
 MODBUS_DEVICE_ADDRESS=1
+
+# You can also use /dev/ttyACM0 for Arduino-based devices
+# MODBUS_PORT=/dev/ttyACM0
 EOF
+    echo "✅ .env file created"
 fi
 
-# Create a simple HTML file if it doesn't exist
-if [ ! -f "modbus.html" ]; then
-    echo "Creating default modbus.html..."
-    cat > modbus.html << 'EOF'
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Modbus Control Panel</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        .status { padding: 10px; margin: 5px; border-radius: 5px; }
-        .connected { background-color: #d4edda; color: #155724; }
-        .disconnected { background-color: #f8d7da; color: #721c24; }
-        button { padding: 8px 16px; margin: 5px; cursor: pointer; }
-    </style>
-</head>
-<body>
-    <h1>Modbus RTU IO 8CH Control Panel</h1>
-    <div id="status" class="status">Status: Loading...</div>
-    <div id="outputs">
-        <h2>Outputs</h2>
-        <div id="output-buttons"></div>
-    </div>
-    <div id="inputs">
-        <h2>Inputs</h2>
-        <div id="input-status"></div>
-    </div>
-    <script>
-        function updateStatus() {
-            fetch('/status')
-                .then(response => response.json())
-                .then(data => {
-                    document.getElementById('status').className = `status ${data.connected ? 'connected' : 'disconnected'}`;
-                    document.getElementById('status').textContent = `Status: ${data.connected ? 'Connected' : 'Disconnected'}`;
-                    
-                    // Update output buttons
-                    const outputButtons = document.getElementById('output-buttons');
-                    outputButtons.innerHTML = '';
-                    data.outputs.forEach((state, index) => {
-                        const button = document.createElement('button');
-                        button.textContent = `Output ${index + 1}: ${state ? 'ON' : 'OFF'}`;
-                        button.onclick = () => toggleOutput(index + 1, !state);
-                        outputButtons.appendChild(button);
-                        outputButtons.appendChild(document.createElement('br'));
-                    });
-                    
-                    // Update input status
-                    const inputStatus = document.getElementById('input-status');
-                    inputStatus.innerHTML = '';
-                    data.inputs.forEach((state, index) => {
-                        const div = document.createElement('div');
-                        div.textContent = `Input ${index + 1}: ${state ? 'HIGH' : 'LOW'}`;
-                        inputStatus.appendChild(div);
-                    });
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    document.getElementById('status').className = 'status disconnected';
-                    document.getElementById('status').textContent = 'Status: Error connecting to server';
-                });
-        }
-        
-        function toggleOutput(channel, state) {
-            fetch(`/control/${channel}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: state ? 'on' : 'off' })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    updateStatus();
-                } else {
-                    alert(`Error: ${data.error}`);
-                }
-            });
-        }
-        
-        // Update status every second
-        setInterval(updateStatus, 1000);
-        
-        // Initial update
-        updateStatus();
-    </script>
-</body>
-</html>
-EOF
+# Install dependencies if needed
+echo "📦 Checking dependencies..."
+pip3 install -q flask python-dotenv pymodbus[serial] 2>/dev/null
+
+# Test mod.py
+echo "🔧 Testing mod.py..."
+if python3 mod.py --help > /dev/null 2>&1; then
+    echo "✅ mod.py is working"
+else
+    echo "⚠️  Warning: mod.py test failed, but continuing..."
 fi
 
-# Make sure app.py is executable
-chmod +x app.py
+# Start the server
+echo ""
+echo "🌐 Starting Flask server..."
+echo "=========================================="
+echo "📍 Main Dashboard: http://localhost:5001/"
+echo "📍 Demo Widgets:   http://localhost:5001/demo"
+echo "📍 Custom Dashboard: http://localhost:5001/dashboard.html"
+echo ""
+echo "🔧 Individual Widget URLs:"
+echo "   • Switch:    http://localhost:5001/widget/switch/0"
+echo "   • Button:    http://localhost:5001/module/button/0"
+echo "   • LED:       http://localhost:5001/module/led/0"
+echo "   • Gauge:     http://localhost:5001/widget/gauge/0"
+echo "   • Register:  http://localhost:5001/widget/register/0"
+echo ""
+echo "📝 Direct Command API:"
+echo "   POST http://localhost:5001/execute"
+echo "   Body: {\"command\": \"rc 0 8\"}"
+echo ""
+echo "Press Ctrl+C to stop the server"
+echo "=========================================="
 
-# Run the Flask app
-echo -e "\nStarting Flask server on http://localhost:5000"
-echo "Open http://localhost:5000 in your browser"
-python app.py
+# Run the modular app
+python3 app.py
