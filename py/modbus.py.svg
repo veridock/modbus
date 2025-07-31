@@ -7,21 +7,49 @@
     <title>Modbus RTU IO 8CH Control System - HTML/SVG Hybrid</title>
     <desc>Mobile-friendly control interface with HTML buttons in SVG</desc>
 
-
     <?py
 import requests
 import os
+import json
 from datetime import datetime
 
+# Configuration
 MODBUS_API = os.getenv("MODBUS_API", "http://localhost:8090")
 REFRESH = os.getenv("AUTO_REFRESH_INTERVAL", "3000")
 now = datetime.now().strftime("%H:%M:%S")
 
+# Try to get status from the Modbus API
 try:
     res = requests.get(f"{MODBUS_API}/status", timeout=2)
     data = res.json()
     outputs = data.get("outputs", [False]*8)
     connected = data.get("connected", False)
+    error_msg = None
+except Exception as e:
+    outputs = [False]*8
+    connected = False
+    error_msg = str(e)
+?>
+
+    <!-- Application Metadata -->
+    <script type="application/json" id="app-metadata">
+    <?py
+    metadata = {
+        "api": {
+            "baseUrl": MODBUS_API,
+            "status": "connected" if connected else "disconnected"
+        },
+        "ui": {
+            "refreshInterval": int(REFRESH),
+            "lastUpdated": now,
+            "error": error_msg
+        },
+        "version": "1.0.0",
+        "lastUpdated": now
+    }
+    print(json.dumps(metadata, indent=4))
+    ?>
+    </script>
 except Exception as e:
     outputs = [False]*8
     connected = False
@@ -29,16 +57,16 @@ except Exception as e:
     ?>
 
     <text x="100" y="40" font-size="18" fill="black">
-        API: <?py= MODBUS_API ?>
+        API: <?py print MODBUS_API ?>
     </text>
     <text x="100" y="70" font-size="18" fill="black">
-        Connected: <?py= 'Yes' if connected else 'No' ?>
+        Connected: <?py print 'Yes' if connected else 'No' ?>
     </text>
     <text x="100" y="100" font-size="18" fill="black">
-        Refresh Interval: <?py= REFRESH ?> ms
+        Refresh Interval: <?py print REFRESH ?> ms
     </text>
     <text x="100" y="130" font-size="18" fill="black">
-        Last Update: <?py= now ?>
+        Last Update: <?py print now ?>
     </text>
 
     <defs>
@@ -395,8 +423,23 @@ except Exception as e:
     </g>
 
     <script type="text/javascript"><![CDATA[
-        const API_BASE_URL = '<?py= API_BASE_URL ?>';
-        const AUTO_REFRESH = '<?py= REFRESH ?>';
+        // Get configuration from metadata
+        const config = JSON.parse(document.getElementById('app-metadata').textContent);
+        
+        // Initialize application
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Application initialized with config:', config);
+            
+            // Display any errors
+            if (config.ui.error) {
+                console.error('Modbus connection error:', config.ui.error);
+            }
+            
+            // Initialize refresh if needed
+            if (config.ui.refreshInterval) {
+                setInterval(() => location.reload(), config.ui.refreshInterval);
+            }
+        });
 
         // Toggle output
         function toggleOutput(channel) {

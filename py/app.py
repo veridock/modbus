@@ -148,24 +148,5 @@ def render_file(filename):
     mimetype = 'image/svg+xml' if filename.endswith('.svg') else 'text/html'
     return render_py_file(full_path, mimetype)
 
-    html += """
-            </div>
-        </div>
-        <script>
-            // Auto-refresh previews every 30 seconds
-            setTimeout(() => {
-                document.querySelectorAll('.svg-preview').forEach(img => {
-                    const src = img.src;
-                    img.src = '';
-                    setTimeout(() => { img.src = src; }, 100);
-                });
-            }, 30000);
-        </script>
-    </body>
-    </html>
-    """
-
-    return html
-
 if __name__ == "__main__":
     app.run(debug=True, port=5001, host='0.0.0.0')
