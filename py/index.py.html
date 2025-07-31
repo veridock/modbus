@@ -1,0 +1,139 @@
+<?py
+# Python code to generate dynamic HTML
+import os
+from datetime import datetime
+
+# Get all .py.svg files in the current directory
+import glob
+from pathlib import Path
+svg_files = [f for f in glob.glob('*.py.svg') if Path(f).is_file()]
+
+# Environment variables
+MODBUS_PORT = os.getenv("MODBUS_PORT", "/dev/ttyUSB0")
+REFRESH = int(os.getenv("REFRESH", "5000"))
+?>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SVG Files Preview</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 { 
+            color: #333; 
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .container { 
+            max-width: 1400px; 
+            margin: 0 auto;
+            padding: 0 15px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            padding: 20px 0;
+        }
+        .svg-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+            transition: transform 0.2s;
+        }
+        .svg-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .svg-preview {
+            width: 100%;
+            height: 200px;
+            object-fit: contain;
+            background: #f8f9fa;
+            border-bottom: 1px solid #eee;
+        }
+        .svg-info {
+            padding: 15px;
+        }
+        .svg-name {
+            font-weight: bold;
+            margin: 0 0 5px 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .svg-link {
+            color: #0066cc;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        .svg-link:hover {
+            text-decoration: underline;
+        }
+        .no-files {
+            text-align: center;
+            color: #666;
+            padding: 40px 20px;
+            grid-column: 1 / -1;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        .refresh-btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .refresh-btn:hover {
+            background: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>SVG Files Preview</h1>
+            <a href="/" class="refresh-btn">⟳ Refresh List</a>
+        </div>
+        <div class="grid">
+            <?py if not svg_files: ?>
+                <div class="no-files">No .py.svg files found in the current directory.</div>
+            <?py else: ?>
+                <?py for file in sorted(svg_files): ?>
+                    <?py file_url = f"/{file}" ?>
+                    <?py file_name = Path(file).name ?>
+                    <div class="svg-card">
+                        <img src="<?py= file_url ?>" alt="<?py= file_name ?>" class="svg-preview">
+                        <div class="svg-info">
+                            <div class="svg-name"><?py= file_name ?></div>
+                            <a href="<?py= file_url ?>" class="svg-link" target="_blank">Open in new tab</a>
+                        </div>
+                    </div>
+                <?py endfor ?>
+            <?py endif ?>
+        </div>
+    </div>
+    
+    <div style="margin-top: 30px; padding: 20px; background: white; border-radius: 8px; max-width: 1200px; margin: 30px auto;">
+        <h2>Environment Information</h2>
+        <p><strong>MODBUS_PORT:</strong> <?py= MODBUS_PORT ?></p>
+        <p><strong>REFRESH (ms):</strong> <?py= REFRESH ?></p>
+        <p><strong>Current time:</strong> <?py= datetime.now().strftime('%Y-%m-%d %H:%M:%S') ?></p>
+    </div>
+</body>
+</html>
