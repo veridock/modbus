@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="120" height="100" viewBox="0 0 120 100">
+    <defs>
+        <style>
+            .output-widget { 
+                cursor: pointer; 
+                transition: all 0.3s;
+            }
+            .output-widget:hover { 
+                transform: scale(1.05); 
+            }
+            .output-widget:active { 
+                transform: scale(0.95); 
+            }
+            .output-active { 
+                fill: #28a745; 
+                stroke: #1e7e34; 
+                stroke-width: 2;
+            }
+            .output-inactive { 
+                fill: #6c757d; 
+                stroke: #495057; 
+                stroke-width: 2;
+            }
+            .text { 
+                fill: white; 
+                font-family: 'Segoe UI', Arial, sans-serif; 
+                font-size: 16px; 
+                font-weight: bold; 
+                text-anchor: middle; 
+                pointer-events: none;
+            }
+            .status-text { 
+                fill: white; 
+                font-family: 'Segoe UI', Arial, sans-serif; 
+                font-size: 12px; 
+                font-weight: normal; 
+                text-anchor: middle; 
+                pointer-events: none;
+            }
+            .label {
+                fill: #333;
+                font-family: 'Segoe UI', Arial, sans-serif;
+                font-size: 10px;
+                text-anchor: middle;
+            }
+        </style>
+        <script><![CDATA[
+            function toggleOutput() {
+                fetch('/toggle/{{ channel }}', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                }).then(() => {
+                    setTimeout(() => window.location.reload(), 500);
+                });
+            }
+            
+            // Auto-refresh every 3 seconds
+            setTimeout(() => window.location.reload(), 3000);
+        ]]></script>
+    </defs>
+
+    <rect x="10" y="10" width="100" height="70" rx="8" 
+          class="output-widget {{ 'output-active' if state else 'output-inactive' }}" 
+          onclick="toggleOutput()"/>
+
+    <text x="60" y="35" class="text">DO{{ channel }}</text>
+    <text x="60" y="55" class="status-text">{{ 'ON' if state else 'OFF' }}</text>
+    <text x="60" y="95" class="label">Click to toggle</text>
+</svg>

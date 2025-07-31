@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="100" height="80" viewBox="0 0 100 80">
+    <defs>
+        <style>
+            .led-active { 
+                fill: #28a745; 
+                filter: drop-shadow(0 0 8px #28a745);
+            }
+            .led-inactive { 
+                fill: #6c757d; 
+                filter: drop-shadow(0 0 4px #333);
+            }
+            .text { 
+                fill: #333; 
+                font-family: 'Segoe UI', Arial, sans-serif; 
+                font-size: 14px; 
+                font-weight: bold; 
+                text-anchor: middle; 
+            }
+            .status-text { 
+                fill: #666; 
+                font-family: 'Segoe UI', Arial, sans-serif; 
+                font-size: 11px; 
+                text-anchor: middle; 
+            }
+        </style>
+        <script><![CDATA[
+            // Auto-refresh every 1 second
+            setTimeout(() => window.location.reload(), 1000);
+        ]]></script>
+    </defs>
+
+    <circle cx="50" cy="35" r="20" 
+            class="{{ 'led-active' if state else 'led-inactive' }}"/>
+
+    <text x="50" y="15" class="text">DI{{ channel }}</text>
+    <text x="50" y="70" class="status-text">{{ 'ACTIVE' if state else 'INACTIVE' }}</text>
+</svg>
