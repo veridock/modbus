@@ -10,7 +10,7 @@ from typing import Optional, List, Union, Dict, Any
 try:
     from pymodbus.client.serial import ModbusSerialClient
     from pymodbus.exceptions import ModbusException, ConnectionException
-    from pymodbus.constants import Endian
+    # Usunięto import Endian, ponieważ nie jest używany w kodzie
     from pymodbus.payload import BinaryPayloadDecoder, BinaryPayloadBuilder
 except ImportError:
     raise ImportError(
@@ -222,24 +222,32 @@ class ModbusClient:
             self.client.close()
             logger.info("Disconnected from Modbus device")
             
-    def read_coils(self, address: int, count: int, unit: int = 1) -> Optional[List[bool]]:
+    def read_coils(self, address: int, count: int, unit: int = None) -> Optional[List[bool]]:
         """
         Read coils (discrete outputs)
         
         Args:
             address: Starting address
             count: Number of coils to read
-            unit: Slave unit ID (default: 1)
+            unit: Slave unit ID (default: from configuration)
             
         Returns:
             List of boolean values or None if error
         """
+        if not self.client or not self.client.is_socket_open():
+            if not self.connect():
+                logger.error("Failed to connect to Modbus device")
+                return None
+        
+        # Użyj unit_id z konfiguracji, jeśli nie podano innego
+        unit_to_use = unit if unit is not None else self.unit_id
+        
         try:
-            result = self.client.read_coils(address, count, unit=unit)
+            result = self.client.read_coils(address, count, unit=unit_to_use)
             if result.isError():
                 logger.error(f"Error reading coils: {result}")
                 return None
-                
+            
             # Convert to list of booleans
             values = result.bits[:count]
             logger.info(f"Read {count} coils from address {address}: {values}")
@@ -330,24 +338,32 @@ class ModbusClient:
             logger.error(f"Error reading input registers: {e}")
             return None
             
-    def write_coil(self, address: int, value: bool, unit: int = 1) -> bool:
+    def write_coil(self, address: int, value: bool, unit: int = None) -> bool:
         """
         Write single coil
         
         Args:
             address: Coil address
             value: Boolean value to write
-            unit: Slave unit ID (default: 1)
+            unit: Slave unit ID (default: from configuration)
             
         Returns:
             True if successful, False otherwise
         """
+        if not self.client or not self.client.is_socket_open():
+            if not self.connect():
+                logger.error("Failed to connect to Modbus device")
+                return False
+        
+        # Użyj unit_id z konfiguracji, jeśli nie podano innego
+        unit_to_use = unit if unit is not None else self.unit_id
+        
         try:
-            result = self.client.write_coil(address, value, unit=unit)
+            result = self.client.write_coil(address, value, unit=unit_to_use)
             if result.isError():
                 logger.error(f"Error writing coil: {result}")
                 return False
-                
+            
             logger.info(f"Written coil at address {address}: {value}")
             return True
             
